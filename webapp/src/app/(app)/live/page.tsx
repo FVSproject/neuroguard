@@ -11,7 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { SensorCard } from "@/components/sensor/sensor-card";
 import { PacifierIcon } from "@/components/icons/pacifier";
-import { WristbandIcon } from "@/components/icons/wristband";
 import { useBleStore } from "@/stores/ble-store";
 import { useBabyStore } from "@/stores/baby-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -105,120 +104,107 @@ export default function LivePage() {
         </Card>
       ) : null}
 
-      {/* --- cardiac / bracelet --- */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          <WristbandIcon className="size-4 text-accent" />
-          {t("sections.foot")}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SensorCard
-            title={t("sensor.hr")}
-            icon={<Heart className="size-4 text-danger" aria-hidden />}
-            value={fmt(values.hr)}
-            unit={t("sensor.hrUnit")}
-            state={evaluate(values.hr, thresholds.hr)}
-            cfg={thresholds.hr}
-            history={history.hr}
-            extra={
-              packet?.bracelet?.hrSrc === 2 ? t("sensor.hrSourceAlgo") :
-              packet?.bracelet?.hrSrc === 1 ? t("sensor.hrSourceBeat") :
-              undefined
-            }
-          />
-          <SensorCard
-            title={t("sensor.spo2")}
-            icon={<Droplet className="size-4 text-brand" aria-hidden />}
-            value={fmt(values.spo2)}
-            unit={t("sensor.spo2Unit")}
-            state={evaluate(values.spo2, thresholds.spo2)}
-            cfg={thresholds.spo2}
-            history={history.spo2}
-          />
-          <SensorCard
-            title={t("sensor.hrv")}
-            icon={<Activity className="size-4 text-brand" aria-hidden />}
-            value={fmt(values.rmssd, 1)}
-            unit={t("sensor.hrvUnit")}
-            state={evaluate(values.rmssd, thresholds.rmssd)}
-            cfg={thresholds.rmssd}
-            history={history.rmssd}
-          />
-          <SensorCard
-            title={t("sensor.stillness")}
-            icon={<Activity className="size-4 text-accent" aria-hidden />}
-            value={fmt(values.stillnessSec)}
-            unit={t("sensor.stillnessUnit")}
-            state={evaluate(values.stillnessSec, thresholds.stillnessSec)}
-            cfg={thresholds.stillnessSec}
-            history={history.stillnessSec}
-          />
-        </div>
-      </section>
-
-      {/* --- hub --- */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          <PacifierIcon className="size-4 text-brand" />
-          {t("sections.hub")}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SensorCard
-            title={t("sensor.suck")}
-            icon={<PacifierIcon className="size-4 text-brand" aria-hidden />}
-            value={fmt(values.suckRate)}
-            unit={t("sensor.suckUnit")}
-            state={evaluate(values.suckRate, thresholds.suckRate)}
-            cfg={thresholds.suckRate}
-            history={history.suckRate}
-          />
-          <SensorCard
-            title={t("sensor.breath")}
-            icon={<Wind className="size-4 text-brand" aria-hidden />}
-            value={fmt(values.breathRate)}
-            unit={t("sensor.breathUnit")}
-            state={evaluate(values.breathRate, thresholds.breathRate)}
-            cfg={thresholds.breathRate}
-            history={history.breathRate}
-          />
-          <SensorCard
-            title={t("sensor.apnea")}
-            icon={<Wind className="size-4 text-danger" aria-hidden />}
-            value={fmt(values.apneaSec)}
-            unit={t("sensor.stillnessUnit")}
-            state={evaluate(values.apneaSec, thresholds.apneaSec)}
-            cfg={thresholds.apneaSec}
-            history={history.apneaSec}
-          />
-          <SensorCard
-            title={t("sensor.temp")}
-            icon={<Thermometer className="size-4 text-accent" aria-hidden />}
-            value={fmt(values.tempC, 1)}
-            unit={t("sensor.tempUnit")}
-            state={evaluate(values.tempC, thresholds.tempC)}
-            cfg={thresholds.tempC}
-            history={history.tempC}
-          />
-          <SensorCard
-            title={t("sensor.humidity")}
-            icon={<Droplet className="size-4 text-brand" aria-hidden />}
-            value={fmt(values.rhPct, 0)}
-            unit={t("sensor.humidityUnit")}
-            state={evaluate(values.rhPct, thresholds.rhPct)}
-            cfg={thresholds.rhPct}
-            history={history.rhPct}
-          />
-          <SensorCard
-            title={t("sensor.eco2")}
-            icon={<Air className="size-4 text-brand" aria-hidden />}
-            value={fmt(values.eco2)}
-            unit={t("sensor.eco2Unit")}
-            state={evaluate(values.eco2, thresholds.eco2)}
-            cfg={thresholds.eco2}
-            history={history.eco2}
-          />
-        </div>
-      </section>
+      {/* --- unified grid: all 10 sensors, one view, no scroll on desktop.
+          Card icon colour signals the source (danger = cardiac, brand = hub /
+          respiratory / env, accent = bracelet motion), so we don't need
+          separate section headers eating vertical space. --- */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <SensorCard
+          title={t("sensor.hr")}
+          icon={<Heart className="size-3.5 text-danger" aria-hidden />}
+          value={fmt(values.hr)}
+          unit={t("sensor.hrUnit")}
+          state={evaluate(values.hr, thresholds.hr)}
+          cfg={thresholds.hr}
+          history={history.hr}
+          extra={
+            packet?.bracelet?.hrSrc === 2 ? t("sensor.hrSourceAlgo") :
+            packet?.bracelet?.hrSrc === 1 ? t("sensor.hrSourceBeat") :
+            undefined
+          }
+        />
+        <SensorCard
+          title={t("sensor.spo2")}
+          icon={<Droplet className="size-3.5 text-brand" aria-hidden />}
+          value={fmt(values.spo2)}
+          unit={t("sensor.spo2Unit")}
+          state={evaluate(values.spo2, thresholds.spo2)}
+          cfg={thresholds.spo2}
+          history={history.spo2}
+        />
+        <SensorCard
+          title={t("sensor.hrv")}
+          icon={<Activity className="size-3.5 text-brand" aria-hidden />}
+          value={fmt(values.rmssd, 1)}
+          unit={t("sensor.hrvUnit")}
+          state={evaluate(values.rmssd, thresholds.rmssd)}
+          cfg={thresholds.rmssd}
+          history={history.rmssd}
+        />
+        <SensorCard
+          title={t("sensor.stillness")}
+          icon={<Activity className="size-3.5 text-accent" aria-hidden />}
+          value={fmt(values.stillnessSec)}
+          unit={t("sensor.stillnessUnit")}
+          state={evaluate(values.stillnessSec, thresholds.stillnessSec)}
+          cfg={thresholds.stillnessSec}
+          history={history.stillnessSec}
+        />
+        <SensorCard
+          title={t("sensor.suck")}
+          icon={<PacifierIcon className="size-3.5 text-brand" aria-hidden />}
+          value={fmt(values.suckRate)}
+          unit={t("sensor.suckUnit")}
+          state={evaluate(values.suckRate, thresholds.suckRate)}
+          cfg={thresholds.suckRate}
+          history={history.suckRate}
+        />
+        <SensorCard
+          title={t("sensor.breath")}
+          icon={<Wind className="size-3.5 text-brand" aria-hidden />}
+          value={fmt(values.breathRate)}
+          unit={t("sensor.breathUnit")}
+          state={evaluate(values.breathRate, thresholds.breathRate)}
+          cfg={thresholds.breathRate}
+          history={history.breathRate}
+        />
+        <SensorCard
+          title={t("sensor.apnea")}
+          icon={<Wind className="size-3.5 text-danger" aria-hidden />}
+          value={fmt(values.apneaSec)}
+          unit={t("sensor.stillnessUnit")}
+          state={evaluate(values.apneaSec, thresholds.apneaSec)}
+          cfg={thresholds.apneaSec}
+          history={history.apneaSec}
+        />
+        <SensorCard
+          title={t("sensor.temp")}
+          icon={<Thermometer className="size-3.5 text-accent" aria-hidden />}
+          value={fmt(values.tempC, 1)}
+          unit={t("sensor.tempUnit")}
+          state={evaluate(values.tempC, thresholds.tempC)}
+          cfg={thresholds.tempC}
+          history={history.tempC}
+        />
+        <SensorCard
+          title={t("sensor.humidity")}
+          icon={<Droplet className="size-3.5 text-brand" aria-hidden />}
+          value={fmt(values.rhPct, 0)}
+          unit={t("sensor.humidityUnit")}
+          state={evaluate(values.rhPct, thresholds.rhPct)}
+          cfg={thresholds.rhPct}
+          history={history.rhPct}
+        />
+        <SensorCard
+          title={t("sensor.eco2")}
+          icon={<Air className="size-3.5 text-brand" aria-hidden />}
+          value={fmt(values.eco2)}
+          unit={t("sensor.eco2Unit")}
+          state={evaluate(values.eco2, thresholds.eco2)}
+          cfg={thresholds.eco2}
+          history={history.eco2}
+        />
+      </div>
     </div>
   );
 }

@@ -54,14 +54,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <Toaster
             position="top-right"
             richColors
-            closeButton
+            closeButton={false}
             expand={false}
             visibleToasts={5}
-            toastOptions={{
-              classNames: {
-                toast: "!bg-surface !border !border-border !text-ink !shadow-md",
-              },
-            }}
+            offset={16}
           />
         </NextIntlClientProvider>
       </body>

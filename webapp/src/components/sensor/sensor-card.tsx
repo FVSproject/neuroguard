@@ -11,9 +11,9 @@ import { ThresholdBadge } from "./threshold-badge";
 import { Sparkline } from "./sparkline";
 
 /**
- * The atomic dashboard cell. Big animated value on top, sparkline in the
- * middle, threshold underneath. Border color follows the current state.
- * See DESIGN.md §7 for the visual contract.
+ * Atomic dashboard cell. Compact by design so the whole set fits in one
+ * viewport on desktop (goal: no vertical scroll to see any card). Sizes at
+ * roughly 140 px tall × 200 px wide.  See DESIGN.md §7 for the contract.
  */
 export function SensorCard({
   title,
@@ -28,27 +28,28 @@ export function SensorCard({
 }: {
   title: ReactNode;
   icon?: ReactNode;
-  value: string | number;                 // formatted (or "—" for stale)
+  value: string | number;
   unit: string;
   state: MetricState;
   cfg?: ThresholdConfig;
-  history?: number[];                     // recent values for the sparkline
-  extra?: ReactNode;                      // secondary metric or source label
+  history?: number[];
+  extra?: ReactNode;
   className?: string;
 }) {
+  // Border colour follows the current state so the room glow doubles as an
+  // ambient status indicator, without repainting the whole background.
   const borderTone =
     state === "critical" ? "border-danger" :
     state === "alert"    ? "border-danger/70" :
-    state === "warn" as MetricState ? "border-warn/70" :
-    state === "watch"    ? "border-warn/60" :
-    state === "stale"    ? "border-offline/50" :
+    state === "watch"    ? "border-warn/70" :
+    state === "stale"    ? "border-offline/40" :
                            "border-border";
 
   return (
     <motion.div
       layout
       className={cn(
-        "card group relative flex flex-col gap-3 border p-5",
+        "card relative flex flex-col gap-1.5 border p-3.5",
         borderTone,
         state === "critical" && "alarm-pulse",
         className,
@@ -57,30 +58,31 @@ export function SensorCard({
       aria-live="polite"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5 text-sm font-medium text-muted">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
           {icon}
-          <span>{title}</span>
+          <span className="truncate">{title}</span>
         </div>
         <StateChip state={state} />
       </div>
 
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-1.5">
         <motion.div
           key={String(value)}
-          initial={{ y: 4, opacity: 0 }}
+          initial={{ y: 3, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 22 }}
-          className="tabular text-5xl font-bold leading-none tracking-tight"
+          transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          className="tabular text-3xl font-bold leading-none tracking-tight"
         >
           {value}
         </motion.div>
-        <div className="text-sm font-medium text-muted">{unit}</div>
+        <div className="text-[11px] font-medium text-muted">{unit}</div>
+        {extra ? <div className="ms-auto text-[10px] uppercase text-muted/70">{extra}</div> : null}
       </div>
 
       {history && history.length > 1 ? (
         <Sparkline
           values={history}
-          height={44}
+          height={22}
           stroke={
             state === "critical" || state === "alert" ? "var(--danger)" :
             state === "watch" ? "var(--warn)" :
@@ -91,15 +93,13 @@ export function SensorCard({
             state === "watch" ? "var(--warn-soft)" :
             "var(--brand-soft)"
           }
+          className="opacity-70"
         />
       ) : (
-        <div className="h-11" aria-hidden />
+        <div className="h-[22px]" aria-hidden />
       )}
 
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-        <ThresholdBadge cfg={cfg} unit={unit} state={state} />
-        {extra ? <div className="text-xs text-muted">{extra}</div> : null}
-      </div>
+      <ThresholdBadge cfg={cfg} unit={unit} state={state} className="text-[10px] leading-tight" />
     </motion.div>
   );
 }

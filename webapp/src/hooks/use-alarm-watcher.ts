@@ -3,10 +3,12 @@
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { createElement } from "react";
 
 import { db } from "@/lib/db";
 import { evaluate } from "@/lib/thresholds";
 import { playAlarm, stopAlarm } from "@/lib/alarm";
+import { AlarmToast, type AlarmToastLevel } from "@/components/alarm/alarm-toast";
 import { useAlarmStore } from "@/stores/alarm-store";
 import { useBabyStore } from "@/stores/baby-store";
 import { useBleStore } from "@/stores/ble-store";
@@ -83,17 +85,25 @@ export function useAlarmWatcher() {
         const v = readMetric(p, metric);
         const state = evaluate(v, cfg);
         const changed = observe(metric, state, v);
-        if (changed === "changed" && (state === "warn" as never || state === "alert" || state === "critical" || state === "watch")) {
+        if (changed === "changed" && (state === "alert" || state === "critical" || state === "watch")) {
           const label = t(METRIC_LABEL_KEY[metric] as never);
           const msg = t("notification.thresholdBreached", { metric: label });
-          const toaster =
-            state === "critical" ? toast.error :
-            state === "alert"    ? toast.error :
-                                   toast.warning;
-          toaster(msg, {
-            description: v !== null ? `${label}: ${v.toFixed(1)}` : undefined,
-            duration: state === "critical" ? 20_000 : state === "alert" ? 10_000 : 4_000,
-          });
+          const level: AlarmToastLevel =
+            state === "critical" ? "critical" :
+            state === "alert"    ? "alert" :
+                                   "watch";
+          toast.custom((id) =>
+            createElement(AlarmToast, {
+              id,
+              level,
+              title: msg,
+              detail: v !== null ? `${v.toFixed(1)}` : undefined,
+              metricLabel: label,
+            }),
+            {
+              duration: state === "critical" ? 20_000 : state === "alert" ? 10_000 : 5_000,
+            },
+          );
 
           const entry: LogEntry = {
             babyId: babyId!,
