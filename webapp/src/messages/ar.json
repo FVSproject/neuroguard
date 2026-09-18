@@ -1,0 +1,157 @@
+{
+  "app": {
+    "name": "نيوروجارد",
+    "tagline": "اللهّاية الذكيّة · نموذج بحثيّ",
+    "welcome": "مرحبًا بك في نيوروجارد"
+  },
+  "language": {
+    "label": "اللغة",
+    "english": "English",
+    "arabic": "العربية"
+  },
+  "theme": {
+    "label": "المظهر",
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "النظام"
+  },
+  "nav": {
+    "live": "المباشر",
+    "profile": "الملفّ",
+    "logs": "السجلّ",
+    "reports": "التقارير",
+    "settings": "الإعدادات"
+  },
+  "landing": {
+    "title": "شاهد قياسات طفلك في اللحظة",
+    "subtitle": "اتّصل بمركز اللهّاية عبر البلوتوث لعرض المصّ والتنفّس والبيئة ومعدّل القلب والحركة في شاشة واحدة.",
+    "createBaby": "أنشئ ملفّ رضيع",
+    "connect": "الاتّصال بالمركز",
+    "connecting": "يتّصل…",
+    "connected": "متّصل",
+    "disconnect": "قطع الاتّصال",
+    "browserWarning": "يتطلّب Chrome أو Edge أو متصفّحًا مبنيًّا على Chromium على حاسوب مكتبيّ أو أندرويد (Web Bluetooth).",
+    "noBaby": "لا يوجد ملفّ رضيع بعد. أنشئ ملفًّا لحفظ القراءات وضبط العتبات."
+  },
+  "baby": {
+    "singular": "رضيع",
+    "plural": "الرضّع",
+    "switch": "تغيير الرضيع",
+    "add": "إضافة رضيع",
+    "edit": "تعديل الملفّ",
+    "delete": "حذف الرضيع",
+    "profile": {
+      "personal": "المعلومات الشخصيّة",
+      "parent": "الوالد / مقدّم الرعاية",
+      "emergency": "جهات الطوارئ",
+      "photo": "الصورة",
+      "photoHint": "اختيارية. تُحفظ على هذا الجهاز فقط.",
+      "name": "اسم الرضيع",
+      "dob": "تاريخ الميلاد",
+      "weight": "الوزن",
+      "height": "الطول",
+      "gender": "الجنس",
+      "genderMale": "ذكر",
+      "genderFemale": "أنثى",
+      "genderOther": "أفضّل عدم الإفصاح",
+      "notes": "ملاحظات (حساسيّة، تاريخ طبّي، ما ينبغي أن يعرفه مقدّم الرعاية)",
+      "parentName": "اسم الوالد",
+      "parentPhone": "هاتف الوالد",
+      "parentEmail": "بريد الوالد الإلكترونيّ",
+      "parentRelation": "صلة القرابة بالرضيع",
+      "contactName": "اسم جهة الاتّصال",
+      "contactPhone": "هاتف جهة الاتّصال",
+      "contactRelation": "صلة القرابة بالرضيع",
+      "addContact": "إضافة جهة اتّصال أخرى"
+    }
+  },
+  "form": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "confirmDelete": "هل تريد الحذف؟ لا يمكن التراجع.",
+    "required": "مطلوب",
+    "invalid": "غير صالح"
+  },
+  "sensor": {
+    "hr": "معدّل ضربات القلب",
+    "hrUnit": "نبضة/د",
+    "spo2": "تشبّع الأكسجين",
+    "spo2Unit": "%",
+    "hrv": "تنوّع معدّل القلب (RMSSD)",
+    "hrvUnit": "مللي ثانية",
+    "suck": "معدّل المصّ",
+    "suckUnit": "مصّة/د",
+    "breath": "معدّل التنفّس",
+    "breathUnit": "نَفَس/د",
+    "temp": "درجة الحرارة",
+    "tempUnit": "°م",
+    "humidity": "الرطوبة",
+    "humidityUnit": "%",
+    "eco2": "ثاني أكسيد الكربون",
+    "eco2Unit": "جزء بالمليون",
+    "tvoc": "مركّبات عضويّة متطايرة",
+    "tvocUnit": "جزء بالبليون",
+    "motion": "النشاط",
+    "motionUnit": "g",
+    "posture": "الوضعيّة",
+    "stillness": "مدّة السكون",
+    "stillnessUnit": "ث"
+  },
+  "state": {
+    "ok": "طبيعيّ",
+    "watch": "انتباه",
+    "alert": "تنبيه",
+    "critical": "حرج",
+    "stale": "لا يوجد بيانات",
+    "off": "المستشعر مطفأ",
+    "warmingUp": "قيد الإحماء",
+    "noFinger": "لا تلامس"
+  },
+  "threshold": {
+    "normal": "الطبيعيّ: {min}–{max} {unit}",
+    "alertHigh": "تنبيه إن تجاوز {max} {unit}",
+    "alertLow": "تنبيه إن نزل عن {min} {unit}",
+    "custom": "مجال مخصّص"
+  },
+  "notification": {
+    "connected": "متّصل بـ {name}",
+    "disconnected": "انقطع الاتّصال بالمركز",
+    "reconnecting": "إعادة الاتّصال…",
+    "thresholdBreached": "{metric} خارج المجال",
+    "sensorFault": "{sensor} لا يستجيب",
+    "batteryLow": "بطاريّة الحزام منخفضة"
+  },
+  "alarm": {
+    "title": "تنبيه",
+    "silence": "إسكات الجلسة",
+    "snooze": "تأجيل 5 دقائق",
+    "acknowledge": "اعتراف",
+    "sound": "صوت التنبيه",
+    "volume": "الصوت",
+    "preview": "معاينة"
+  },
+  "logs": {
+    "title": "السجلّ",
+    "empty": "لم تُسجَّل أيّ نشاطات بعد.",
+    "export": "تصدير CSV",
+    "clear": "مسح السجلّ",
+    "filter": "تصفية"
+  },
+  "reports": {
+    "title": "التقارير",
+    "daily": "يوميّ",
+    "weekly": "أسبوعيّ",
+    "empty": "لم تُسجَّل أيّ جلسات بعد."
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "thresholds": "العتبات",
+    "alarms": "التنبيهات",
+    "connection": "الاتّصال",
+    "data": "البيانات والخصوصيّة",
+    "about": "حول",
+    "resetThresholds": "استعادة الافتراضيّ",
+    "clearAllData": "مسح كلّ البيانات على هذا الجهاز"
+  }
+}

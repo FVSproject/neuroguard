@@ -1,0 +1,28 @@
+# -- Web app --------------------------------------------------------
+webapp/node_modules/
+webapp/.next/
+webapp/.turbo/
+webapp/build/
+webapp/out/
+webapp/.vercel/
+
+# -- Firmware -------------------------------------------------------
+# Arduino IDE build cache
+code/**/build/
+code/**/*.hex
+code/**/*.bin
+
+# -- Editor + OS ----------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# -- Env / secrets --------------------------------------------------
+*.env
+*.env.local
+.env.local
+.env.*.local
+
+# -- Old / experimental --------------------------------------------
+.pio/

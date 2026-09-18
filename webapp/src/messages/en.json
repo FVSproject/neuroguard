@@ -1,0 +1,157 @@
+{
+  "app": {
+    "name": "NeuroGuard",
+    "tagline": "Smart pacifier · research prototype",
+    "welcome": "Welcome to NeuroGuard"
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "arabic": "العربية"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "nav": {
+    "live": "Live",
+    "profile": "Profile",
+    "logs": "Logs",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "landing": {
+    "title": "See your baby's vitals in real time",
+    "subtitle": "Connect the pacifier hub over Bluetooth. Sucking, breathing, environment, heart rate and motion — all on one screen.",
+    "createBaby": "Create a baby profile",
+    "connect": "Connect to hub",
+    "connecting": "Connecting…",
+    "connected": "Connected",
+    "disconnect": "Disconnect",
+    "browserWarning": "Requires Chrome, Edge, or a Chromium browser on desktop or Android (Web Bluetooth).",
+    "noBaby": "No baby profile yet. Create one to save readings and set thresholds."
+  },
+  "baby": {
+    "singular": "Baby",
+    "plural": "Babies",
+    "switch": "Switch baby",
+    "add": "Add a baby",
+    "edit": "Edit profile",
+    "delete": "Delete baby",
+    "profile": {
+      "personal": "Personal information",
+      "parent": "Parent / caregiver",
+      "emergency": "Emergency contacts",
+      "photo": "Photo",
+      "photoHint": "Optional. Stored on this device only.",
+      "name": "Baby's name",
+      "dob": "Date of birth",
+      "weight": "Weight",
+      "height": "Height",
+      "gender": "Gender",
+      "genderMale": "Boy",
+      "genderFemale": "Girl",
+      "genderOther": "Prefer not to say",
+      "notes": "Notes (allergies, medical history, anything the caregiver should know)",
+      "parentName": "Parent name",
+      "parentPhone": "Parent phone",
+      "parentEmail": "Parent email",
+      "parentRelation": "Relation to baby",
+      "contactName": "Contact name",
+      "contactPhone": "Contact phone",
+      "contactRelation": "Relation to baby",
+      "addContact": "Add another contact"
+    }
+  },
+  "form": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirmDelete": "Delete? This cannot be undone.",
+    "required": "Required",
+    "invalid": "Invalid"
+  },
+  "sensor": {
+    "hr": "Heart rate",
+    "hrUnit": "bpm",
+    "spo2": "Blood oxygen",
+    "spo2Unit": "%",
+    "hrv": "HRV (RMSSD)",
+    "hrvUnit": "ms",
+    "suck": "Sucking rate",
+    "suckUnit": "sucks/min",
+    "breath": "Breathing rate",
+    "breathUnit": "breaths/min",
+    "temp": "Temperature",
+    "tempUnit": "°C",
+    "humidity": "Humidity",
+    "humidityUnit": "%",
+    "eco2": "eCO₂",
+    "eco2Unit": "ppm",
+    "tvoc": "TVOC",
+    "tvocUnit": "ppb",
+    "motion": "Activity",
+    "motionUnit": "g",
+    "posture": "Posture",
+    "stillness": "Time still",
+    "stillnessUnit": "s"
+  },
+  "state": {
+    "ok": "OK",
+    "watch": "Watch",
+    "alert": "Alert",
+    "critical": "Critical",
+    "stale": "No data",
+    "off": "Sensor off",
+    "warmingUp": "Warming up",
+    "noFinger": "No contact"
+  },
+  "threshold": {
+    "normal": "Normal: {min}–{max} {unit}",
+    "alertHigh": "Alert if > {max} {unit}",
+    "alertLow": "Alert if < {min} {unit}",
+    "custom": "Custom range"
+  },
+  "notification": {
+    "connected": "Connected to {name}",
+    "disconnected": "Disconnected from hub",
+    "reconnecting": "Reconnecting…",
+    "thresholdBreached": "{metric} out of range",
+    "sensorFault": "{sensor} not responding",
+    "batteryLow": "Bracelet battery low"
+  },
+  "alarm": {
+    "title": "Alarm",
+    "silence": "Silence session",
+    "snooze": "Snooze 5 min",
+    "acknowledge": "Acknowledge",
+    "sound": "Alarm sound",
+    "volume": "Volume",
+    "preview": "Preview"
+  },
+  "logs": {
+    "title": "Logs",
+    "empty": "No activity recorded yet.",
+    "export": "Export CSV",
+    "clear": "Clear logs",
+    "filter": "Filter"
+  },
+  "reports": {
+    "title": "Reports",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "empty": "No sessions recorded yet."
+  },
+  "settings": {
+    "title": "Settings",
+    "thresholds": "Thresholds",
+    "alarms": "Alarms",
+    "connection": "Connection",
+    "data": "Data & privacy",
+    "about": "About",
+    "resetThresholds": "Reset to defaults",
+    "clearAllData": "Clear all data on this device"
+  }
+}

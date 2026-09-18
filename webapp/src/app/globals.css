@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* -----------------------------------------------------------------
+   NeuroGuard design tokens.  See webapp/DESIGN.md for the reasoning
+   behind each value; this file is the runtime binding of those tokens
+   for Tailwind v4's @theme block and CSS variables.
+   ----------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  /* Surface */
+  --bg:              #fbf8f4;
+  --surface:         #ffffff;
+  --surface-2:       #f4efe8;
+  --border:          #ece4d7;
+  --ink:             #1f2430;
+  --muted:           #6b7180;
+
+  /* Brand */
+  --brand:           #4a7c8c;
+  --brand-strong:    #375e6b;
+  --brand-soft:      #dcece9;
+  --accent:          #e8956b;
+  --accent-strong:   #cc7649;
+  --accent-soft:     #fbe8d9;
+
+  /* Status */
+  --ok:              #3fa072;
+  --ok-soft:         #dcefe1;
+  --warn:            #d99c2a;
+  --warn-soft:       #fbeecf;
+  --danger:          #c94b4b;
+  --danger-soft:     #f9dcdc;
+  --offline:         #8892a3;
+  --offline-soft:    #e7ebf1;
+
+  /* Shape */
+  --radius-sm:       8px;
+  --radius:          12px;
+  --radius-lg:       16px;
+  --radius-full:     9999px;
+
+  /* Shadow (light) */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow:    0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 4px 12px rgba(15, 23, 42, 0.08), 0 16px 40px rgba(15, 23, 42, 0.08);
+
+  /* Focus ring */
+  --focus:           #4a7c8c;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --bg:              #0f1115;
+  --surface:         #181b21;
+  --surface-2:       #22262e;
+  --border:          #2b2f38;
+  --ink:             #e7e9ee;
+  --muted:           #9098a8;
+
+  --brand:           #6ba0b1;
+  --brand-strong:    #8fbfce;
+  --brand-soft:      #1e3742;
+  --accent:          #f2a882;
+  --accent-strong:   #f5b998;
+  --accent-soft:     #402617;
+
+  --ok:              #5abd8e;
+  --ok-soft:         #1d3a2c;
+  --warn:            #eab84d;
+  --warn-soft:       #3a2f13;
+  --danger:          #e26a6a;
+  --danger-soft:     #3f1e1e;
+  --offline:         #6a7385;
+  --offline-soft:    #262c37;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow:    0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.45), 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Bind CSS vars to Tailwind v4's @theme so `bg-surface`, `text-ink`,
+   `border-border` etc. work in JSX without a full config file. */
+@theme inline {
+  --color-bg:              var(--bg);
+  --color-surface:         var(--surface);
+  --color-surface-2:       var(--surface-2);
+  --color-border:          var(--border);
+  --color-ink:             var(--ink);
+  --color-muted:           var(--muted);
+
+  --color-brand:           var(--brand);
+  --color-brand-strong:    var(--brand-strong);
+  --color-brand-soft:      var(--brand-soft);
+  --color-accent:          var(--accent);
+  --color-accent-strong:   var(--accent-strong);
+  --color-accent-soft:     var(--accent-soft);
+
+  --color-ok:              var(--ok);
+  --color-ok-soft:         var(--ok-soft);
+  --color-warn:            var(--warn);
+  --color-warn-soft:       var(--warn-soft);
+  --color-danger:          var(--danger);
+  --color-danger-soft:     var(--danger-soft);
+  --color-offline:         var(--offline);
+  --color-offline-soft:    var(--offline-soft);
+
+  --radius:                var(--radius);
+  --radius-sm:             var(--radius-sm);
+  --radius-lg:             var(--radius-lg);
+  --radius-full:           var(--radius-full);
+
+  --font-sans:             var(--font-inter), 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-arabic:           var(--font-cairo), 'Cairo', 'Segoe UI Arabic', 'Tahoma', sans-serif;
+  --font-mono:             ui-monospace, 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+
+  /* shadcn/ui compatibility aliases so `npx shadcn add …` primitives pick up
+     the NeuroGuard palette without a second theme file. */
+  --color-background:            var(--bg);
+  --color-foreground:            var(--ink);
+  --color-card:                  var(--surface);
+  --color-card-foreground:       var(--ink);
+  --color-popover:               var(--surface);
+  --color-popover-foreground:    var(--ink);
+  --color-primary:               var(--brand);
+  --color-primary-foreground:    #ffffff;
+  --color-secondary:             var(--surface-2);
+  --color-secondary-foreground:  var(--ink);
+  --color-muted-foreground:      var(--muted);
+  --color-accent-foreground:     #ffffff;
+  --color-destructive:           var(--danger);
+  --color-destructive-foreground:#ffffff;
+  --color-input:                 var(--border);
+  --color-ring:                  var(--brand);
+}
+
+/* Base */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html[dir="rtl"] body { font-family: var(--font-arabic); line-height: 1.85; }
+
+/* Tabular numerals on live readouts so digits don't wiggle at 1 Hz updates. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Utility helpers used across dashboard cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.card-flat {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Focus */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Ambient motion: subtle "connected" pulse. Respects reduced-motion. */
+@keyframes ng-pulse-soft {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.05); }
+}
+.pulse-soft {
+  animation: ng-pulse-soft 3s ease-in-out infinite;
+}
+
+/* Chest-rise ambient breathing for the "monitoring" indicator */
+@keyframes ng-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+.breathe {
+  animation: ng-breathe 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Alarm border pulse — used ONLY on cards in the `alert` state */
+@keyframes ng-alarm-border {
+  0%, 100% { border-color: var(--danger); box-shadow: 0 0 0 0 rgba(201, 75, 75, 0.35); }
+  50%      { border-color: var(--danger); box-shadow: 0 0 0 8px rgba(201, 75, 75, 0);   }
+}
+.alarm-pulse {
+  animation: ng-alarm-border 1.5s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-soft, .breathe, .alarm-pulse { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}

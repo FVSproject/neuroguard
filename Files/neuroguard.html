@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeuroGuard — Smart Pacifier Research Prototype</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:        #f6f7f9;
+    --card:      #ffffff;
+    --ink:       #1a1f2c;
+    --muted:     #5a6072;
+    --accent:    #0a4d78;
+    --accent-2:  #14a098;
+    --line:      #e3e6ec;
+    --chip-bg:   #eef4f9;
+    --chip-ink:  #0a4d78;
+    --alert:     #b3541e;
+    --shadow:    0 1px 2px rgba(15, 23, 42, 0.04),
+                 0 8px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  [lang="ar"] {
+    font-family: 'Cairo', 'Segoe UI Arabic', 'Tahoma', sans-serif;
+    line-height: 1.9;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  header.hero {
+    background: linear-gradient(135deg, var(--accent) 0%, #06304a 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 40px 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+  }
+  header.hero h1 {
+    margin: 0 0 6px;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  header.hero .subtitle {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+  }
+
+  section.card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+  section.card[dir="rtl"] { text-align: right; }
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    margin: 30px 0 12px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent-2);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  h4 {
+    margin: 20px 0 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  p { margin: 0 0 14px; }
+  p.muted { color: var(--muted); }
+
+  ul, ol { padding-inline-start: 22px; margin: 8px 0 14px; }
+  li { margin-bottom: 6px; }
+
+  code {
+    background: #f0f2f6;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+  }
+
+  .lang-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    background: #eef2f7;
+    color: var(--muted);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-inline-end: 10px;
+    vertical-align: middle;
+  }
+
+  /* Component spec grid: label | content */
+  dl.spec {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 6px 16px;
+    margin: 8px 0 4px;
+    padding: 12px 14px;
+    background: #fafbfd;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 15px;
+  }
+  [dir="rtl"] dl.spec {
+    grid-template-columns: 100px 1fr;
+  }
+  dl.spec dt {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding-top: 2px;
+  }
+  [dir="rtl"] dl.spec dt {
+    text-transform: none;
+    font-size: 14px;
+  }
+  dl.spec dd { margin: 0; color: var(--ink); }
+
+  /* Node header chip */
+  .node-chip {
+    display: inline-block;
+    background: var(--chip-bg);
+    color: var(--chip-ink);
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    margin-inline-start: 8px;
+    vertical-align: middle;
+  }
+
+  .status-list li strong { color: var(--accent); }
+  .status-list li.done::before {
+    content: "✓";
+    color: var(--accent-2);
+    font-weight: 700;
+    margin-inline-end: 8px;
+  }
+  .status-list li.next::before {
+    content: "→";
+    color: var(--muted);
+    font-weight: 700;
+    margin-inline-end: 8px;
+  }
+
+  .alert-list li {
+    padding: 10px 14px;
+    background: #fff7ec;
+    border-inline-start: 3px solid var(--alert);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    list-style: none;
+  }
+  .alert-list { padding-inline-start: 0; }
+  .alert-list code { background: #ffe9d1; color: var(--alert); }
+
+  figure {
+    margin: 0 0 32px;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    page-break-inside: avoid;
+  }
+  figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    background: #fafbfd;
+    border: 1px solid var(--line);
+  }
+  figcaption {
+    margin-top: 14px;
+    font-size: 14px;
+    color: var(--muted);
+    display: grid;
+    gap: 6px;
+  }
+  figcaption .en { text-align: left; }
+  figcaption .ar {
+    font-family: 'Cairo', sans-serif;
+    text-align: right;
+    direction: rtl;
+  }
+  figcaption .n {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-inline-end: 8px;
+    vertical-align: middle;
+  }
+
+  hr.divider {
+    border: 0;
+    height: 1px;
+    background: var(--line);
+    margin: 32px 0;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 24px;
+    padding: 16px;
+  }
+
+  /* Floating "Print PDF" button — hidden in print output */
+  .print-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18),
+                0 2px 4px rgba(15, 23, 42, 0.10);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  .print-btn:hover {
+    background: #06304a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.22),
+                0 3px 6px rgba(15, 23, 42, 0.12);
+  }
+  .print-btn:active { transform: translateY(0); }
+  .print-btn svg { width: 18px; height: 18px; fill: currentColor; }
+  .print-btn .ar { font-family: 'Cairo', sans-serif; }
+
+  @media print {
+    /* A4 with modest margins so nothing gets cropped by printer hardware */
+    @page { size: A4; margin: 15mm 12mm; }
+
+    html, body { background: white; font-size: 10.5pt; }
+    .container { max-width: 100%; padding: 0; margin: 0; }
+    .no-print { display: none !important; }
+
+    header.hero {
+      background: white !important;
+      color: var(--ink) !important;
+      border: 1px solid var(--line);
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      box-shadow: none;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    header.hero h1 { font-size: 26pt; color: var(--ink) !important; }
+    header.hero .subtitle { color: var(--muted) !important; }
+
+    section.card { box-shadow: none; padding: 18px 22px; margin-bottom: 14px; }
+    figure     { box-shadow: none; padding: 14px; margin-bottom: 14px;
+                 break-inside: avoid; page-break-inside: avoid; }
+    dl.spec    { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+
+    h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+    p, li { orphans: 3; widows: 3; }
+
+    hr.divider {
+      border: 0; height: 0; margin: 0;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    a { color: inherit; text-decoration: none; }
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 16px; }
+    header.hero { padding: 28px 20px; }
+    header.hero h1 { font-size: 32px; }
+    section.card, figure { padding: 20px; }
+    dl.spec { grid-template-columns: 1fr; gap: 2px 0; padding: 12px; }
+    dl.spec dt { padding-top: 8px; }
+    dl.spec dt:first-child { padding-top: 0; }
+  }
+</style>
+</head>
+
+<body>
+
+<button class="print-btn no-print" onclick="window.print()"
+        title="Print as A4 PDF  ·  طباعة كملف PDF بحجم A4"
+        aria-label="Print as A4 PDF">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+  </svg>
+  <span>Print PDF</span>
+  <span class="ar" lang="ar" dir="rtl">· طباعة</span>
+</button>
+
+<div class="container">
+
+  <header class="hero">
+    <h1>NeuroGuard</h1>
+    <p class="subtitle">Smart Pacifier — Research / Bench Prototype
+      &nbsp;·&nbsp; <span lang="ar" dir="rtl">اللهّاية الذكيّة — نموذج بحثيّ ومعمليّ</span>
+    </p>
+  </header>
+
+  <!-- ============================== ENGLISH ============================== -->
+  <section class="card" lang="en" dir="ltr">
+    <h2><span class="lang-badge">EN</span>The idea</h2>
+    <p>
+      NeuroGuard is a two-node infant-monitoring platform for research and
+      education. A <strong>smart pacifier hub</strong> captures sucking dynamics,
+      breath sounds, and the micro-environment around the crib. A
+      <strong>foot bracelet</strong> captures pulse, heart-rate variability,
+      blood-oxygen saturation, motion, and posture.
+    </p>
+    <p>The two nodes cooperate wirelessly:</p>
+    <ul>
+      <li>The <strong>bracelet</strong> advertises as a Bluetooth Low Energy
+        peripheral and pushes its data to the pacifier once per second.</li>
+      <li>The <strong>pacifier hub</strong> subscribes to those notifications,
+        merges them with its own sensors, and hosts a self-contained
+        <strong>WiFi hotspot + web dashboard</strong>. Any phone or laptop joins
+        the <code>NeuroGuard-Pacifier</code> network and opens
+        <code>http://192.168.4.1</code> to see everything live.</li>
+    </ul>
+    <p>
+      There is no cloud, no MQTT broker, and no external server: everything
+      happens on the two boards.
+    </p>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">EN</span>Components — role, readings, states</h2>
+
+    <h3>Pacifier hub <span class="node-chip">XIAO ESP32-S3</span></h3>
+    <p class="muted">
+      Carries the sensors that live inside the pacifier itself (nipple + shield)
+      and doubles as the system's brain. Runs three roles at once: sensor
+      sampler, BLE central (subscribed to the bracelet), and WiFi access point
+      with an embedded HTTP + JSON server.
+    </p>
+
+    <h4>RFP-602 — force-sensing resistor <span class="node-chip">pin D1</span></h4>
+    <dl class="spec">
+      <dt>Role</dt><dd>Measure sucking pressure through the pacifier nipple → non-nutritive sucking (NNS) dynamics.</dd>
+      <dt>Wiring</dt><dd>3V3 → 47 kΩ → D1 → RFP-602 → GND (pull-up divider). At boot, a 64-sample baseline is captured — keep the pacifier unpressed for the first second.</dd>
+      <dt>Reads</dt><dd>Every second: <code>fsr_pct_now</code> (0–100 %), <code>sucks_per_min</code>, <code>bursts_per_min</code>, <code>mean_peak_pct</code>, <code>mean_burst_sec</code>, <code>regularity_cv</code> (coefficient of variation of intra-burst inter-suck intervals — lower means more rhythmic).</dd>
+      <dt>States</dt><dd><strong>Idle</strong> (below 15 %). <strong>Active</strong> (crossed 15 %, tracking the peak). <strong>Released</strong> (dropped below 8 % → suck event pushed to the 60 s ring buffer with its peak amplitude). A "burst" is a run of sucks whose inter-suck gap stays under 1.5 s.</dd>
+    </dl>
+
+    <h4>MAX4466 — electret microphone <span class="node-chip">pin D2</span></h4>
+    <dl class="spec">
+      <dt>Role</dt><dd>Pick up airflow sounds through the pacifier → respiratory rate + apnea watchdog.</dd>
+      <dt>Reads</dt><dd>Every second: <code>mic_pkpk_now</code> (peak-to-peak amplitude over the last 50 ms window), <code>resp_events_per_min</code>, <code>est_breaths_per_min</code> (≈ events ÷ 2 — one event per inhale and one per exhale), <code>seconds_since_last_breath</code>, <code>apnea_alert</code>.</dd>
+      <dt>States</dt><dd><strong>Idle</strong> (pkpk below 300 counts). <strong>Event</strong> (pkpk crossed 300 → breath event pushed if 250 ms have passed since the last one). <strong>Refractory</strong> (250 ms lockout after each event so one loud inhalation isn't counted twice).</dd>
+    </dl>
+
+    <h4>ENS160 + AHT21 — environment combo <span class="node-chip">I²C D4/D5</span></h4>
+    <dl class="spec">
+      <dt>Role</dt><dd>Monitor the micro-climate in the crib: air quality, temperature, humidity.</dd>
+      <dt>Reads</dt><dd>Sampled at 1 Hz over I²C (ENS160 @ 0x52 with ADDR→GND, AHT21 @ 0x38). <code>temp_c</code>, <code>rh_pct</code> from AHT21; <code>eco2_ppm</code>, <code>tvoc_ppb</code>, <code>aqi</code> (1–5) from ENS160. Temperature and humidity are fed back into the ENS160 compensation register each cycle for accurate eCO<sub>2</sub>.</dd>
+      <dt>States</dt><dd><strong>Warm-up</strong> — first ~3 min after power-on, ENS160 values are still stabilising. <strong>Ready</strong> — both sensors OK (<code>aht_ok=true</code>, <code>ens_ok=true</code>). <strong>Recovering</strong> — I²C hiccup drops one of the flags to false and the hub retries <code>.begin()</code> on the next tick without rebooting.</dd>
+      <dt>AQI legend</dt><dd>1 excellent · 2 good · 3 moderate · 4 poor · 5 unhealthy.</dd>
+    </dl>
+
+    <h3>Foot bracelet <span class="node-chip">XIAO nRF52840 Sense</span></h3>
+    <p class="muted">
+      Small self-contained wearable. Samples its two sensors, computes summary
+      statistics, and pushes a 41-byte packet over BLE every second. Advertises
+      as <code>NG-Bracelet</code> under a custom NeuroGuard service UUID.
+    </p>
+
+    <h4>MAX30102 — pulse oximeter + PPG <span class="node-chip">I²C @ 0x57</span></h4>
+    <dl class="spec">
+      <dt>Role</dt><dd>Heart rate, blood-oxygen saturation, and heart-rate variability.</dd>
+      <dt>Reads</dt><dd>Dual-LED (IR + RED) at 100 Hz sample rate. Per second: <code>finger_present</code> (IR ≥ 50 000 counts), <code>ir_raw</code>, <code>hr_bpm</code>, <code>hr_src</code> (which detector produced it), <code>rr_last_ms</code>, <code>rr_mean_ms</code>. HRV from a rolling 60-beat window: <code>sdnn_ms</code>, <code>rmssd_ms</code>, <code>pnn50_pct</code>. Every 3 s the SparkFun algorithm recomputes <code>spo2_pct</code> and <code>spo2_valid</code> from a 100-sample buffer.</dd>
+      <dt>States</dt><dd>PPG: <strong>No-finger</strong> (IR &lt; 50 000 → all values reset). <strong>Contact</strong> (IR ≥ 50 000). <strong>Weak signal</strong> (AC envelope &lt; 30 counts → no beat this cycle). HR source: <code>HRSRC_NONE</code> (no reading), <code>HRSRC_BEAT</code> (per-beat detector, freshness &lt; 4 s), <code>HRSRC_ALGO</code> (SpO<sub>2</sub> algorithm's HR estimate, used when the per-beat detector goes stale).</dd>
+      <dt>Detector</dt><dd>Custom adaptive-threshold beat detector: EMA-tracked DC baseline, positive-peak envelope with slow decay, 50 % threshold, 350 ms refractory. Feeds RR intervals in the 300–2000 ms range into a 60-slot ring for HRV stats.</dd>
+    </dl>
+
+    <h4>MPU-6050 — inertial measurement unit <span class="node-chip">I²C @ 0x68</span></h4>
+    <dl class="spec">
+      <dt>Role</dt><dd>Motion detection, posture classification, long-stillness watchdog.</dd>
+      <dt>Reads</dt><dd>3-axis accel + gyro at 50 Hz. AD0 tied to GND. Auto-gain-calibrated against gravity at boot (works around MPU6050 clones that quietly ignore range writes). Per second: <code>activity_index</code> (1 s RMS of net |a|−1g, in g), <code>pitch_deg</code>, <code>roll_deg</code>, <code>posture</code>, <code>motion_events_min</code> (in the rolling 60 s window), <code>seconds_since_movement</code>, <code>stillness_alert</code>.</dd>
+      <dt>States</dt><dd>Motion: <strong>Still</strong> (net acceleration &lt; 0.15 g). <strong>Moving</strong> (crossed 0.15 g with 300 ms debounce → event pushed). <strong>Refractory</strong> (lockout to avoid double-counting a single kick). Posture (foot orientation, descriptive only): <strong>FLAT</strong> (|pitch|&lt;20°, |roll|&lt;20°), <strong>TILT_LEFT</strong> (roll&lt;−60°), <strong>TILT_RIGHT</strong> (roll&gt;60°), <strong>TOE_UP</strong> (pitch&gt;60°), <strong>TOE_DOWN</strong> (pitch&lt;−60°), <strong>TILTED</strong> (other), <strong>UNKNOWN</strong>.</dd>
+    </dl>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">EN</span>Communication</h2>
+    <ul>
+      <li><strong>BLE</strong> (bracelet → hub, 1 Hz). A byte-exact 41-byte
+        <code>BraceletWire</code> struct is notified to the hub. The
+        <code>struct</code> is declared identically on both sides with
+        <code>static_assert(sizeof(BraceletWire) == 41)</code>, so the build
+        fails if either side drifts. Custom service UUID
+        <code>a1b2c3d4-9999-4a2b-9c1e-1a2b3c4d5e6f</code>. The hub scans on
+        boot and reconnects automatically on drop.</li>
+      <li><strong>WiFi SoftAP + web dashboard</strong> (hub → phone/laptop). The
+        hub broadcasts SSID <code>NeuroGuard-Pacifier</code> (WPA2 password
+        <code>neuroguard</code>, channel 6). Any phone or laptop that joins
+        opens <code>http://192.168.4.1</code> and gets a single-page dashboard
+        served from the hub's flash. The page polls <code>/data</code> once
+        per second and returns the merged JSON view of both nodes.</li>
+    </ul>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">EN</span>Alert conditions</h2>
+    <p>Every second the hub emits a packet with two flag fields, surfaced as banners on the dashboard:</p>
+    <ul class="alert-list">
+      <li><code>apnea_alert</code> — no breath sound detected for ≥ <strong>10 s</strong>. Bench threshold; clinical apnea is closer to 20 s. Adjustable via <code>APNEA_ALERT_SEC</code>.</li>
+      <li><code>stillness_alert</code> — no infant motion detected for ≥ <strong>120 s</strong>. Adjustable via <code>STILL_ALERT_SEC</code>.</li>
+    </ul>
+    <p class="muted">There is no on-node buzzer or notification service in the current build; the web dashboard is the sole UI.</p>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">EN</span>Progress</h2>
+    <ul class="status-list">
+      <li class="done"><strong>Firmware</strong> — both nodes complete and streaming their full sensor set every second.</li>
+      <li class="done"><strong>Wireless link</strong> — BLE bracelet ↔ hub is byte-exact and reconnects automatically on drop.</li>
+      <li class="done"><strong>Web dashboard</strong> — WiFi SoftAP + embedded single-page dashboard shows live NNS, respiratory, environment, and bracelet panels.</li>
+      <li class="done"><strong>Detection algorithms</strong> — NNS sucks/bursts/regularity, respiratory events + apnea watchdog, custom PPG beat detector, HRV (SDNN/RMSSD/pNN50), SpO<sub>2</sub>, motion + posture + stillness.</li>
+      <li class="next"><strong>Calibration</strong> — threshold tuning against reference instruments (adult volunteers first, infant-proxy dummies next).</li>
+      <li class="next"><strong>Longer-session soak tests</strong> and bracelet battery-life characterisation.</li>
+      <li class="next"><strong>Enclosure integration</strong> and final packaging.</li>
+    </ul>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ============================== ARABIC =============================== -->
+  <section class="card" lang="ar" dir="rtl">
+    <h2><span class="lang-badge">AR</span>الفكرة</h2>
+    <p>
+      نيوروجارد منصّة مراقبة رضيع تتكوّن من عقدتين، لأغراض بحثيّة وتعليميّة.
+      <strong>مركز اللهّاية الذكيّة</strong> يلتقط ديناميكيّات المصّ، وأصوات التنفّس،
+      والمُناخ الدقيق حول السرير. <strong>حزام القدم</strong> يلتقط النبض، وتنوّع
+      معدّل ضربات القلب، وتشبّع الأكسجين في الدم، والحركة، ووضعيّة القدم.
+    </p>
+    <p>تتعاون العقدتان لاسلكيًّا:</p>
+    <ul>
+      <li><strong>الحزام</strong> يُعلن عن نفسه طرفًا محيطيًّا في بروتوكول
+        Bluetooth Low Energy، ويرسل بياناته إلى اللهّاية مرّة كلّ ثانية.</li>
+      <li><strong>مركز اللهّاية</strong> يشترك في هذه الإشعارات، ويدمجها مع
+        مستشعراته، ثمّ يستضيف <strong>نقطة اتّصال WiFi ولوحة بيانات ويب</strong>
+        ذاتيّة الاكتفاء. يستطيع أيّ هاتف أو حاسوب الانضمام إلى الشبكة
+        <code>NeuroGuard-Pacifier</code> وفتح الرابط
+        <code>http://192.168.4.1</code> لمشاهدة كلّ شيء مباشرًا.</li>
+    </ul>
+    <p>
+      لا يوجد سحابة، ولا خادم MQTT، ولا خادم خارجيّ: كلّ شيء يجري على اللوحتَين.
+    </p>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">AR</span>المكوّنات — الدور والقراءات والحالات</h2>
+
+    <h3>مركز اللهّاية <span class="node-chip">XIAO ESP32-S3</span></h3>
+    <p class="muted">
+      يحمل المستشعرات التي تلامس اللهّاية نفسها (الحلمة + الدرع)، ويؤدّي دور دماغ
+      النظام. يشغّل ثلاثة أدوار في وقت واحد: أخذ العيّنات من المستشعرات، ومركزيّ
+      BLE (مشترك في إشعارات الحزام)، ونقطة وصول WiFi مع خادم HTTP + JSON مضمّن.
+    </p>
+
+    <h4>RFP-602 — مستشعر القوّة <span class="node-chip">المدخل D1</span></h4>
+    <dl class="spec">
+      <dt>الدور</dt><dd>قياس ضغط المصّ عبر حلمة اللهّاية ← ديناميكيّات المصّ غير الغذائي (NNS).</dd>
+      <dt>التوصيل</dt><dd>3V3 → 47 كيلو أوم → D1 → RFP-602 → GND (مقسّم سحب علوي). عند التشغيل يُلتقط الخطّ القاعديّ من متوسّط 64 عيّنة — يجب إبقاء اللهّاية غير مضغوطة في الثانية الأولى.</dd>
+      <dt>القراءات</dt><dd>كلّ ثانية: <code>fsr_pct_now</code> (0–100 %)، <code>sucks_per_min</code>، <code>bursts_per_min</code>، <code>mean_peak_pct</code>، <code>mean_burst_sec</code>، <code>regularity_cv</code> (معامل التغيّر للفواصل بين المصّات داخل الرَشقة — الأقلّ يعني أكثر انتظامًا).</dd>
+      <dt>الحالات</dt><dd><strong>خامل</strong> (تحت 15 %). <strong>نشط</strong> (تجاوز 15 %، تتبّع الذروة). <strong>منفصل</strong> (نزل تحت 8 % ← يُدفع حدث مصّ إلى حلقة الـ 60 ثانية مع سعته الذروة). "الرَشقة" هي سلسلة مصّات فاصلها الزمنيّ يبقى تحت 1.5 ثانية.</dd>
+    </dl>
+
+    <h4>MAX4466 — ميكروفون كهروضغطيّ <span class="node-chip">المدخل D2</span></h4>
+    <dl class="spec">
+      <dt>الدور</dt><dd>التقاط أصوات جريان الهواء عبر اللهّاية ← معدّل التنفّس + مراقب انقطاع النفس.</dd>
+      <dt>القراءات</dt><dd>كلّ ثانية: <code>mic_pkpk_now</code> (السعة من قمّة إلى قمّة خلال آخر نافذة 50 مللي ثانية)، <code>resp_events_per_min</code>، <code>est_breaths_per_min</code> (≈ عدد الأحداث ÷ 2 — حدث للشهيق وآخر للزفير)، <code>seconds_since_last_breath</code>، <code>apnea_alert</code>.</dd>
+      <dt>الحالات</dt><dd><strong>خامل</strong> (pkpk أقلّ من 300). <strong>حدث</strong> (تجاوز 300 ← يُدفع حدث تنفّس إن مضى 250 مللي ثانية منذ الأخير). <strong>فترة كبح</strong> (قفل 250 مللي ثانية بعد كلّ حدث حتّى لا يُحسب شهيق قويّ مرّتين).</dd>
+    </dl>
+
+    <h4>ENS160 + AHT21 — وحدة قياس البيئة <span class="node-chip">I²C على D4/D5</span></h4>
+    <dl class="spec">
+      <dt>الدور</dt><dd>مراقبة المُناخ الدقيق داخل السرير: جودة الهواء، ودرجة الحرارة، والرطوبة.</dd>
+      <dt>القراءات</dt><dd>عيّنة كلّ ثانية عبر I²C (ENS160 على العنوان 0x52 مع ADDR موصول بالأرضي، وAHT21 على العنوان 0x38). <code>temp_c</code>، <code>rh_pct</code> من AHT21؛ <code>eco2_ppm</code>، <code>tvoc_ppb</code>، <code>aqi</code> (1–5) من ENS160. تُغذَّى الحرارة والرطوبة إلى سجلّ تعويض ENS160 في كلّ دورة لضمان دقّة eCO<sub>2</sub>.</dd>
+      <dt>الحالات</dt><dd><strong>إحماء</strong> — أوّل ~3 دقائق بعد التشغيل، قيم ENS160 لم تستقرّ بعد. <strong>جاهز</strong> — كلا المستشعرَين OK (<code>aht_ok=true</code>، <code>ens_ok=true</code>). <strong>يتعافى</strong> — تعثّر مؤقّت في I²C ينزل أحد العلمَين إلى false، ويُعيد المركز استدعاء <code>.begin()</code> في الدورة التالية دون إعادة تشغيل.</dd>
+      <dt>دلالة AQI</dt><dd>1 ممتاز · 2 جيّد · 3 معتدل · 4 سيّئ · 5 غير صحّي.</dd>
+    </dl>
+
+    <h3>حزام القدم <span class="node-chip">XIAO nRF52840 Sense</span></h3>
+    <p class="muted">
+      جهاز صغير قابل للارتداء ذاتيّ الاكتفاء. يأخذ عيّنات مستشعرَيه، ويحسب
+      إحصاءات ملخّصة، ويدفع حزمة بحجم 41 بايت عبر BLE كلّ ثانية. يُعلن نفسه
+      باسم <code>NG-Bracelet</code> بمعرّف خدمة NeuroGuard مخصّص.
+    </p>
+
+    <h4>MAX30102 — مقياس النبض والأكسجين <span class="node-chip">I²C على 0x57</span></h4>
+    <dl class="spec">
+      <dt>الدور</dt><dd>معدّل ضربات القلب، وتشبّع الأكسجين، وتنوّع معدّل القلب.</dd>
+      <dt>القراءات</dt><dd>مصباحان (IR + الأحمر) بمعدّل عيّنة 100 هرتز. كلّ ثانية: <code>finger_present</code> (IR ≥ 50 000)، <code>ir_raw</code>، <code>hr_bpm</code>، <code>hr_src</code> (أيّ كاشف أنتجه)، <code>rr_last_ms</code>، <code>rr_mean_ms</code>. حساب HRV من نافذة 60 نبضة متدحرجة: <code>sdnn_ms</code>، <code>rmssd_ms</code>، <code>pnn50_pct</code>. كلّ 3 ثوانٍ تُعيد خوارزميّة SparkFun حساب <code>spo2_pct</code> و<code>spo2_valid</code> من مخزّن بحجم 100 عيّنة.</dd>
+      <dt>الحالات</dt><dd>PPG: <strong>لا يوجد إصبع</strong> (IR &lt; 50 000 ← تُصفَّر كلّ القيم). <strong>تلامس</strong> (IR ≥ 50 000). <strong>إشارة ضعيفة</strong> (مغلّف AC أقلّ من 30 ← لا نبضة هذه الدورة). مصدر HR: <code>HRSRC_NONE</code> (لا قراءة)، <code>HRSRC_BEAT</code> (كاشف النبضة، تحديث خلال أقلّ من 4 ثوانٍ)، <code>HRSRC_ALGO</code> (تقدير HR من خوارزميّة SpO<sub>2</sub>، يُستخدم عند تقادم كاشف النبضة).</dd>
+      <dt>الكاشف</dt><dd>كاشف نبض مخصّص متكيّف العتبة: خطّ قاعديّ متتبَّع بمرشّح EMA، مغلّف ذروة موجب بتحلّل بطيء، عتبة 50 %، وفترة كبح 350 مللي ثانية. يُغذّي فواصل RR في نطاق 300–2000 مللي ثانية إلى حلقة من 60 خانة لحساب إحصائيّات HRV.</dd>
+    </dl>
+
+    <h4>MPU-6050 — وحدة قياس بالقصور الذاتي <span class="node-chip">I²C على 0x68</span></h4>
+    <dl class="spec">
+      <dt>الدور</dt><dd>كشف الحركة، وتصنيف الوضعيّة، ومراقب السكون الطويل.</dd>
+      <dt>القراءات</dt><dd>مسارع + جيروسكوب ثلاثيّ المحاور بمعدّل 50 هرتز. AD0 موصول بالأرضي. مع معايرة تلقائيّة للربح مقابل الجاذبيّة عند التشغيل (لتجاوز نُسخ MPU6050 المقلَّدة التي تتجاهل أوامر تغيير النطاق بصمت). كلّ ثانية: <code>activity_index</code> (جذر متوسّط مربّعات صافي |a|−1g خلال ثانية بوحدة g)، <code>pitch_deg</code>، <code>roll_deg</code>، <code>posture</code>، <code>motion_events_min</code> (في نافذة 60 ثانية)، <code>seconds_since_movement</code>، <code>stillness_alert</code>.</dd>
+      <dt>الحالات</dt><dd>الحركة: <strong>ساكن</strong> (صافي التسارع تحت 0.15 g). <strong>متحرّك</strong> (تجاوز 0.15 g مع كبح 300 مللي ثانية ← يُدفع حدث). <strong>فترة كبح</strong> (قفل لتجنّب عدّ ركلة واحدة مرّتين). الوضعيّة (وصف لوضع القدم فقط): <strong>مستوٍ FLAT</strong> (|pitch|&lt;20°، |roll|&lt;20°)، <strong>مائل يسارًا</strong> (roll&lt;−60°)، <strong>مائل يمينًا</strong> (roll&gt;60°)، <strong>الأصابع لأعلى</strong> (pitch&gt;60°)، <strong>الأصابع لأسفل</strong> (pitch&lt;−60°)، <strong>مائل</strong>، <strong>غير معروف</strong>.</dd>
+    </dl>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">AR</span>الاتّصال</h2>
+    <ul>
+      <li><strong>BLE</strong> (الحزام ← المركز، 1 هرتز). يُرسَل إشعار بحزمة
+        <code>BraceletWire</code> بحجم 41 بايت تمامًا. تُعرَّف بنية C بشكل
+        متطابق على الجانبَين مع
+        <code>static_assert(sizeof(BraceletWire) == 41)</code>، بحيث يفشل
+        التصريف إن انحرف أحد الطرفَين. معرّف الخدمة المخصّص
+        <code>a1b2c3d4-9999-4a2b-9c1e-1a2b3c4d5e6f</code>. يفحص المركز عند
+        التشغيل ويعيد الاتّصال تلقائيًّا عند انقطاعه.</li>
+      <li><strong>نقطة اتّصال WiFi + لوحة الويب</strong> (المركز ← الهاتف/الحاسوب).
+        يبثّ المركز الشبكة <code>NeuroGuard-Pacifier</code> (كلمة سرّ WPA2:
+        <code>neuroguard</code>، على القناة 6). يستطيع أيّ هاتف أو حاسوب ينضمّ
+        إليها فتح <code>http://192.168.4.1</code> ورؤية لوحة أحاديّة الصفحة
+        تُقدَّم من ذاكرة فلاش المركز. تسحب الصفحة بيانات من <code>/data</code>
+        كلّ ثانية وتُرجع رؤية JSON موحّدة للعقدتَين.</li>
+    </ul>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">AR</span>شروط التنبيه</h2>
+    <p>كلّ ثانية يُرسل المركز حزمة تحوي علمَين، يظهران كشرائط تنبيه على اللوحة:</p>
+    <ul class="alert-list">
+      <li><code>apnea_alert</code> — لم يُكتشف صوت تنفّس منذ ≥ <strong>10 ثوانٍ</strong>. عتبة مِعمليّة؛ العتبة السريريّة أقرب إلى 20 ثانية. قابلة للضبط عبر <code>APNEA_ALERT_SEC</code>.</li>
+      <li><code>stillness_alert</code> — لم تُكتشف حركة رضيع منذ ≥ <strong>120 ثانية</strong>. قابلة للضبط عبر <code>STILL_ALERT_SEC</code>.</li>
+    </ul>
+    <p class="muted">لا يوجد جرس على العقدة ولا خدمة إشعارات في البنية الحاليّة؛ لوحة الويب هي الواجهة الوحيدة.</p>
+
+    <h2 style="margin-top: 40px;"><span class="lang-badge">AR</span>حالة التقدّم</h2>
+    <ul class="status-list">
+      <li class="done"><strong>البرمجيّات الثابتة (Firmware)</strong> — العقدتان مكتملتان وتُرسلان مجموعة المستشعرات كاملةً كلّ ثانية.</li>
+      <li class="done"><strong>الرابط اللاسلكيّ</strong> — رابط BLE بين الحزام والمركز متطابق بايت-إلى-بايت ويعيد الاتّصال تلقائيًّا عند الانقطاع.</li>
+      <li class="done"><strong>لوحة الويب</strong> — نقطة اتّصال WiFi ولوحة أحاديّة الصفحة مضمّنة تعرض بيانات NNS والتنفّس والبيئة والحزام مباشرًا.</li>
+      <li class="done"><strong>خوارزميّات الكشف</strong> — مصّات NNS ورَشقات وانتظام، أحداث التنفّس ومراقب انقطاع النفس، كاشف نبض PPG مخصّص، HRV (SDNN/RMSSD/pNN50)، SpO<sub>2</sub>، حركة ووضعيّة وسكون.</li>
+      <li class="next"><strong>المعايرة</strong> — ضبط العتبات مقابل أجهزة مرجعيّة (متطوّعين بالغين أوّلاً، ثمّ دمى محاكاة رضيع).</li>
+      <li class="next"><strong>اختبارات ثبات لجلسات أطول</strong> وقياس عمر البطاريّة في الحزام.</li>
+      <li class="next"><strong>تكامل العلبة</strong> والتغليف النهائيّ.</li>
+    </ul>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ============================== GALLERY ============================== -->
+  <section class="card">
+    <h2><span class="lang-badge">EN&nbsp;·&nbsp;AR</span>Diagrams &nbsp;·&nbsp;
+      <span lang="ar" dir="rtl">المخطّطات</span></h2>
+    <p class="muted">
+      Wiring diagrams and mechanical / electrical blueprints for the two nodes.
+      &nbsp;<span lang="ar" dir="rtl">مخطّطات التوصيل، والمخطّطات الميكانيكيّة
+      والكهربائيّة للعقدتَين.</span>
+    </p>
+  </section>
+
+  <figure>
+    <img src="../Circuit/circuit_diagram_bb.png" alt="Pacifier hub wiring: XIAO ESP32-S3 with FSR, MAX4466 mic, and ENS160+AHT21">
+    <figcaption>
+      <div class="en"><span class="n">Fig. 1</span>
+        Pacifier hub wiring. XIAO ESP32-S3 with the RFP-602 force-sensing
+        resistor on D1 (47 kΩ pull-up divider), the GY-MAX4466 electret
+        microphone on D2, and the ENS160+AHT21 environmental combo on I²C
+        (SDA/SCL on D4/D5; ADDR→GND selects ENS160 address 0x52). Powered by a
+        LiPo through a slide switch. The generic FSR in the illustration
+        represents the RFP-602 — same footprint, same wiring topology.</div>
+      <div class="ar" lang="ar"><span class="n">شكل 1</span>
+        توصيل مركز اللهّاية. متحكّم XIAO ESP32-S3 مع مستشعر القوّة RFP-602 على
+        المدخل D1 (مقسّم سحب علوي بمقاومة 47 كيلو أوم)، وميكروفون GY-MAX4466 على
+        المدخل D2، ووحدة قياس البيئة ENS160+AHT21 على ناقل I²C (SDA/SCL على
+        D4/D5؛ طرف ADDR موصول بالأرضي فيصبح عنوان ENS160 هو 0x52). التغذية من
+        بطاريّة ليثيوم بوليمر عبر مفتاح انزلاقي. المستشعر العامّ في الرسم يمثّل
+        RFP-602 — نفس البصمة ونفس نمط التوصيل.</div>
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="../Circuit/circuit_diagram2_bb.png" alt="Foot bracelet wiring: XIAO nRF52840 Sense with MPU-6050 IMU and MAX30102 PPG on the shared I2C bus">
+    <figcaption>
+      <div class="en"><span class="n">Fig. 2</span>
+        Foot bracelet wiring. XIAO nRF52840 Sense with the MPU-6050 IMU
+        (0x68, AD0→GND) and the MAX30102 pulse-oximeter (0x57) sharing the
+        I²C bus on D4/D5 at 400 kHz. INT lines on D2 (MAX30102) and D3
+        (MPU-6050) are reserved for future FIFO / motion interrupts. LiPo
+        powered through a slide switch. The illustration shows an ESP32-S3
+        as a stand-in — the actual build uses the pin-compatible
+        nRF52840 Sense so the wiring is identical.</div>
+      <div class="ar" lang="ar"><span class="n">شكل 2</span>
+        توصيل حزام القدم. متحكّم XIAO nRF52840 Sense مع مستشعر الحركة MPU-6050
+        (على العنوان 0x68 وAD0 موصول بالأرضي) ومقياس النبض MAX30102 (على العنوان
+        0x57) يتشاركان ناقل I²C على D4/D5 بسرعة 400 كيلو هرتز. خطّا المقاطعة INT
+        على D2 (MAX30102) وD3 (MPU-6050) محجوزان لمقاطعات مستقبليّة. التغذية من
+        بطاريّة ليثيوم بوليمر عبر مفتاح انزلاقي. الرسم يعرض ESP32-S3 كبديل بصريّ
+        — البناء الفعليّ يستخدم nRF52840 Sense المتوافق في الأطراف، فتكون
+        التوصيلات مطابقة تمامًا.</div>
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="../Circuit/blueprint%20hub.png" alt="Pacifier hub mechanical and electrical blueprint: assembly views, cross-section, exploded view, wiring diagram, and parts list">
+    <figcaption>
+      <div class="en"><span class="n">Fig. 3</span>
+        Pacifier hub — mechanical and electrical blueprint. Top and side
+        assembly views, an A–A cross-section, internal layout with the cover
+        removed, PCB mounting plan, exploded view, wiring diagram, parts list,
+        and key dimensions (all in millimetres). Enclosure in transparent
+        PLA / TPU with a food-grade silicone nipple.</div>
+      <div class="ar" lang="ar"><span class="n">شكل 3</span>
+        مركز اللهّاية — المخطّط الميكانيكيّ والكهربائيّ. مساقط علويّة وجانبيّة،
+        وقطاع A–A، ومخطّط داخليّ بعد إزالة الغطاء، وخطّة تركيب اللوح الإلكترونيّ،
+        ورسم تفكيكيّ، ومخطّط التوصيل، وقائمة القطع، والأبعاد الرئيسيّة
+        (بالميليمتر). العلبة من PLA/TPU الشفّاف بحلمة سيليكون مطابقة لمواصفات
+        الغذاء.</div>
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="../Circuit/blueprint%20foot.png" alt="Foot bracelet mechanical and electrical blueprint">
+    <figcaption>
+      <div class="en"><span class="n">Fig. 4</span>
+        Foot bracelet — mechanical and electrical blueprint. Overall assembly
+        and internal layout for the strap enclosure, showing MAX30102 optical
+        window alignment against the skin, MPU-6050 orientation, and battery
+        placement.</div>
+      <div class="ar" lang="ar"><span class="n">شكل 4</span>
+        حزام القدم — المخطّط الميكانيكيّ والكهربائيّ. المخطّط العامّ والتخطيط
+        الداخليّ لعلبة الحزام، مع بيان محاذاة النافذة الضوئيّة لـ MAX30102 على
+        الجلد، واتّجاه مستشعر MPU-6050، وموقع البطاريّة.</div>
+    </figcaption>
+  </figure>
+
+  <footer>
+    NeuroGuard &nbsp;·&nbsp; Research prototype
+    &nbsp;·&nbsp; <span lang="ar" dir="rtl">نموذج بحثيّ</span>
+  </footer>
+
+</div>
+</body>
+</html>
