@@ -34,6 +34,7 @@ function stats(rows: PacketRecord[], key: keyof PacketRecord): Stats {
 }
 
 function Metric({ label, unit, s }: { label: string; unit: string; s: Stats }) {
+  const t = useTranslations("reports");
   return (
     <div className="rounded-lg border border-border bg-surface-2 p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-muted">{label}</div>
@@ -41,17 +42,17 @@ function Metric({ label, unit, s }: { label: string; unit: string; s: Stats }) {
         <div className="tabular text-2xl font-semibold">
           {s.mean !== undefined ? s.mean.toFixed(1) : "—"}
         </div>
-        <div className="text-xs text-muted">avg {unit}</div>
+        <div className="text-xs text-muted">{t("avg")} {unit}</div>
       </div>
       <div className="mt-1 text-xs text-muted">
         {s.n > 0 ? (
           <>
-            min <span className="tabular font-medium">{s.min?.toFixed(1)}</span> ·
-            max <span className="tabular font-medium">{s.max?.toFixed(1)}</span> ·
-            n {s.n}
+            {t("min")} <span className="tabular font-medium">{s.min?.toFixed(1)}</span> ·
+            {" "}{t("max")} <span className="tabular font-medium">{s.max?.toFixed(1)}</span> ·
+            {" "}{t("samples")} {s.n}
           </>
         ) : (
-          "no data"
+          t("noData")
         )}
       </div>
     </div>
@@ -120,13 +121,11 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">{t("reports.title")}</h1>
-        <p className="mt-1 text-sm text-muted">
-          Aggregates computed from packets stored on this device only.
-        </p>
+        <p className="mt-1 text-sm text-muted">{t("reports.subtitle")}</p>
       </header>
       <Card>
         <CardHeader>
-          <CardTitle>Summary</CardTitle>
+          <CardTitle>{t("reports.summary")}</CardTitle>
         </CardHeader>
         <CardContent>
           {babyId ? summary : (

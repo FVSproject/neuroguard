@@ -95,18 +95,18 @@ export default function LogsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t("logs.title")}</h1>
           <p className="mt-1 text-sm text-muted">
-            {entries.length} entries
+            {t("logs.entriesCount", { count: entries.length })}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={severity} onValueChange={(v) => setSeverity(v as typeof severity)}>
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="info">Info</SelectItem>
-              <SelectItem value="warn">Warn</SelectItem>
-              <SelectItem value="alert">Alert</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="all">{t("logs.severity.all")}</SelectItem>
+              <SelectItem value="info">{t("logs.severity.info")}</SelectItem>
+              <SelectItem value="warn">{t("logs.severity.warn")}</SelectItem>
+              <SelectItem value="alert">{t("logs.severity.alert")}</SelectItem>
+              <SelectItem value="critical">{t("logs.severity.critical")}</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!visible.length}>
@@ -122,7 +122,7 @@ export default function LogsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Events</CardTitle>
+          <CardTitle>{t("logs.events")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-[60vh]">

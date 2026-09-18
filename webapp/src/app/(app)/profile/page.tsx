@@ -74,12 +74,12 @@ export default function ProfilePage() {
           </Button>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
-          {current.weightKg ? <div><span className="text-muted">Weight: </span>{current.weightKg} kg</div> : null}
-          {current.heightCm ? <div><span className="text-muted">Height: </span>{current.heightCm} cm</div> : null}
-          {current.gender ? <div><span className="text-muted">Gender: </span>{current.gender}</div> : null}
+          {current.weightKg ? <div><span className="text-muted">{t("profile.weight")}: </span>{current.weightKg} kg</div> : null}
+          {current.heightCm ? <div><span className="text-muted">{t("profile.height")}: </span>{current.heightCm} cm</div> : null}
+          {current.gender ? <div><span className="text-muted">{t("profile.gender")}: </span>{current.gender}</div> : null}
           {current.notes ? (
             <div className="sm:col-span-2">
-              <span className="text-muted">Notes: </span>
+              <span className="text-muted">{t("profile.notes")}: </span>
               {current.notes}
             </div>
           ) : null}

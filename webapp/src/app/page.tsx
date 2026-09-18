@@ -90,7 +90,7 @@ export default async function LandingPage() {
                 </div>
                 <div>
                   <div className="text-xs font-medium uppercase tracking-wide text-muted">
-                    Pacifier hub
+                    {t("landing.hubCard.role")}
                   </div>
                   <div className="text-sm font-semibold">
                     XIAO ESP32-S3
@@ -98,9 +98,9 @@ export default async function LandingPage() {
                 </div>
               </div>
               <div className="mt-4 space-y-1.5 text-xs text-muted">
-                <div>· FSR — sucking pressure</div>
-                <div>· Mic — breath sounds + apnea</div>
-                <div>· ENS160 + AHT21 — air quality</div>
+                <div>· {t("landing.hubCard.line1")}</div>
+                <div>· {t("landing.hubCard.line2")}</div>
+                <div>· {t("landing.hubCard.line3")}</div>
               </div>
             </div>
 
@@ -111,7 +111,7 @@ export default async function LandingPage() {
                 </div>
                 <div>
                   <div className="text-xs font-medium uppercase tracking-wide text-muted">
-                    Foot bracelet
+                    {t("landing.footCard.role")}
                   </div>
                   <div className="text-sm font-semibold">
                     XIAO nRF52840
@@ -119,9 +119,9 @@ export default async function LandingPage() {
                 </div>
               </div>
               <div className="mt-4 space-y-1.5 text-xs text-muted">
-                <div>· MAX30102 — heart rate + SpO₂</div>
-                <div>· HRV — SDNN, RMSSD, pNN50</div>
-                <div>· MPU-6050 — motion + posture</div>
+                <div>· {t("landing.footCard.line1")}</div>
+                <div>· {t("landing.footCard.line2")}</div>
+                <div>· {t("landing.footCard.line3")}</div>
               </div>
             </div>
           </div>

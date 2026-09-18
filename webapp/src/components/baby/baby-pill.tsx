@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, BabyIcon, Plus, UserPen } from "lucide-react";
+import { ChevronDown, BabyIcon, Plus, Settings as SettingsIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +25,7 @@ function initials(name: string) {
 
 export function BabyPill({ className }: { className?: string }) {
   const t = useTranslations("baby");
+  const tNav = useTranslations("nav");
   const hydrated = useBabyStore((s) => s.hydrated);
   const babies = useBabyStore((s) => s.babies);
   const currentId = useBabyStore((s) => s.currentBabyId);
@@ -113,8 +114,8 @@ export function BabyPill({ className }: { className?: string }) {
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="gap-2">
           <Link href="/settings">
-            <UserPen className="size-4" aria-hidden />
-            Settings
+            <SettingsIcon className="size-4" aria-hidden />
+            {tNav("settings")}
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -76,7 +76,7 @@ export default function LivePage() {
           <div className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5">
             <Switch id="mock" checked={mockEnabled} onCheckedChange={setMock} />
             <Label htmlFor="mock" className="cursor-pointer text-xs font-medium text-muted">
-              Mock stream
+              {t("landing.mockStream")}
             </Label>
           </div>
           {status === "connected" ? (
@@ -109,7 +109,7 @@ export default function LivePage() {
       <section className="space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
           <WristbandIcon className="size-4 text-accent" />
-          Foot bracelet
+          {t("sections.foot")}
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SensorCard
@@ -120,7 +120,11 @@ export default function LivePage() {
             state={evaluate(values.hr, thresholds.hr)}
             cfg={thresholds.hr}
             history={history.hr}
-            extra={packet?.bracelet?.hrSrc === 2 ? "algo" : packet?.bracelet?.hrSrc === 1 ? "beat" : undefined}
+            extra={
+              packet?.bracelet?.hrSrc === 2 ? t("sensor.hrSourceAlgo") :
+              packet?.bracelet?.hrSrc === 1 ? t("sensor.hrSourceBeat") :
+              undefined
+            }
           />
           <SensorCard
             title={t("sensor.spo2")}
@@ -156,7 +160,7 @@ export default function LivePage() {
       <section className="space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
           <PacifierIcon className="size-4 text-brand" />
-          Pacifier hub
+          {t("sections.hub")}
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SensorCard
@@ -178,7 +182,7 @@ export default function LivePage() {
             history={history.breathRate}
           />
           <SensorCard
-            title="Apnea watchdog"
+            title={t("sensor.apnea")}
             icon={<Wind className="size-4 text-danger" aria-hidden />}
             value={fmt(values.apneaSec)}
             unit={t("sensor.stillnessUnit")}

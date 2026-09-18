@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Cairo } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -20,8 +20,20 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "NeuroGuard — Smart Pacifier",
+  title: {
+    default: "NeuroGuard — Smart Pacifier",
+    template: "%s · NeuroGuard",
+  },
   description: "Live infant vitals from the NeuroGuard smart pacifier and foot bracelet.",
+  applicationName: "NeuroGuard",
+  appleWebApp: { capable: true, title: "NeuroGuard", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#4a7c8c" },
+    { media: "(prefers-color-scheme: dark)",  color: "#06304a" },
+  ],
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

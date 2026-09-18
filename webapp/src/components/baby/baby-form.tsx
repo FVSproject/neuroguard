@@ -110,7 +110,7 @@ export function BabyForm({ mode }: { mode: "create" | "edit" }) {
 
   async function onPhotoPick(file: File) {
     if (file.size > MAX_AVATAR_BYTES) {
-      toast.error(`Photo too large — keep it under ${Math.round(MAX_AVATAR_BYTES / 1024)} KB.`);
+      toast.error(t("toast.photoTooLarge", { kb: Math.round(MAX_AVATAR_BYTES / 1024) }));
       return;
     }
     const reader = new FileReader();
@@ -146,7 +146,7 @@ export function BabyForm({ mode }: { mode: "create" | "edit" }) {
             relation: c.relation || undefined,
           })),
         });
-        toast.success(`${v.name} created`);
+        toast.success(t("toast.babyCreated", { name: v.name }));
         router.push("/live");
       }
     } catch (err: unknown) {

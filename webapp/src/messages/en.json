@@ -30,8 +30,25 @@
     "connecting": "Connecting…",
     "connected": "Connected",
     "disconnect": "Disconnect",
+    "mockStream": "Mock stream",
     "browserWarning": "Requires Chrome, Edge, or a Chromium browser on desktop or Android (Web Bluetooth).",
-    "noBaby": "No baby profile yet. Create one to save readings and set thresholds."
+    "noBaby": "No baby profile yet. Create one to save readings and set thresholds.",
+    "hubCard": {
+      "role": "Pacifier hub",
+      "line1": "FSR — sucking pressure",
+      "line2": "Mic — breath sounds + apnea",
+      "line3": "ENS160 + AHT21 — air quality"
+    },
+    "footCard": {
+      "role": "Foot bracelet",
+      "line1": "MAX30102 — heart rate + SpO₂",
+      "line2": "HRV — SDNN, RMSSD, pNN50",
+      "line3": "MPU-6050 — motion + posture"
+    }
+  },
+  "sections": {
+    "hub": "Pacifier hub",
+    "foot": "Foot bracelet"
   },
   "baby": {
     "singular": "Baby",
@@ -74,6 +91,9 @@
     "invalid": "Invalid"
   },
   "sensor": {
+    "apnea": "Apnea watchdog",
+    "hrSourceBeat": "beat",
+    "hrSourceAlgo": "algo",
     "hr": "Heart rate",
     "hrUnit": "bpm",
     "spo2": "Blood oxygen",
@@ -133,16 +153,32 @@
   },
   "logs": {
     "title": "Logs",
+    "events": "Events",
     "empty": "No activity recorded yet.",
     "export": "Export CSV",
     "clear": "Clear logs",
-    "filter": "Filter"
+    "filter": "Filter",
+    "entriesCount": "{count} entries",
+    "severity": {
+      "all": "All",
+      "info": "Info",
+      "warn": "Watch",
+      "alert": "Alert",
+      "critical": "Critical"
+    }
   },
   "reports": {
     "title": "Reports",
+    "subtitle": "Aggregates computed from packets stored on this device only.",
+    "summary": "Summary",
     "daily": "Daily",
     "weekly": "Weekly",
-    "empty": "No sessions recorded yet."
+    "empty": "No sessions recorded yet.",
+    "avg": "avg",
+    "min": "min",
+    "max": "max",
+    "samples": "n",
+    "noData": "no data"
   },
   "settings": {
     "title": "Settings",
@@ -152,6 +188,23 @@
     "data": "Data & privacy",
     "about": "About",
     "resetThresholds": "Reset to defaults",
-    "clearAllData": "Clear all data on this device"
+    "clearAllData": "Clear all data on this device",
+    "clearAllHint": "Wipes every baby profile, threshold, log, and packet stored in this browser. Cannot be undone.",
+    "dataDescription": "All baby profiles, thresholds, logs, and recorded packets are stored inside this browser's IndexedDB — nothing leaves this device.",
+    "vibrateOnAlarm": "Vibrate on alarm",
+    "alarmEnabled": "Alarm enabled"
+  },
+  "profile": {
+    "privateHint": "Everything you enter here stays on this device only — nothing is sent to a server.",
+    "weight": "Weight",
+    "height": "Height",
+    "gender": "Gender",
+    "notes": "Notes"
+  },
+  "toast": {
+    "babyCreated": "{name} created",
+    "babyDeleted": "Baby deleted",
+    "photoTooLarge": "Photo too large — keep it under {kb} KB.",
+    "allDataCleared": "All device data cleared"
   }
 }

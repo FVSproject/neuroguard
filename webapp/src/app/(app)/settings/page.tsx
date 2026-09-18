@@ -230,7 +230,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="vibrate">Vibrate on alarm</Label>
+                <Label htmlFor="vibrate">{t("settings.vibrateOnAlarm")}</Label>
                 <Switch
                   id="vibrate"
                   checked={prefs?.vibrate ?? true}
@@ -247,23 +247,50 @@ export default function SettingsPage() {
               <CardTitle>{t("settings.data")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <p className="text-muted">
-                All baby profiles, thresholds, logs, and recorded packets are stored
-                inside this browser's IndexedDB — nothing leaves this device.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-danger"
-                onClick={async () => {
-                  if (!confirm(t("form.confirmDelete"))) return;
-                  await deleteBaby(babyId);
-                  toast.success("Baby deleted");
-                }}
-              >
-                <Trash2 className="size-4" aria-hidden />
-                {t("baby.delete")}
-              </Button>
+              <p className="text-muted">{t("settings.dataDescription")}</p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-danger"
+                  onClick={async () => {
+                    if (!confirm(t("form.confirmDelete"))) return;
+                    await deleteBaby(babyId);
+                    toast.success(t("toast.babyDeleted"));
+                  }}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                  {t("baby.delete")}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-danger"
+                  onClick={async () => {
+                    if (!confirm(t("settings.clearAllHint") + "\n\n" + t("form.confirmDelete"))) return;
+                    // Wipe every table then clear per-locale caches.
+                    await Promise.all([
+                      db().babies.clear(),
+                      db().parents.clear(),
+                      db().emergencyContacts.clear(),
+                      db().thresholds.clear(),
+                      db().alarmPrefs.clear(),
+                      db().logs.clear(),
+                      db().packets.clear(),
+                    ]);
+                    localStorage.removeItem("ng.baby");
+                    localStorage.removeItem("ng.ui");
+                    toast.success(t("toast.allDataCleared"));
+                    setTimeout(() => window.location.assign("/"), 400);
+                  }}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                  {t("settings.clearAllData")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted">{t("settings.clearAllHint")}</p>
             </CardContent>
           </Card>
         </TabsContent>
