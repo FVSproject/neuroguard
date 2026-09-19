@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { SensorCard } from "@/components/sensor/sensor-card";
+import { MicLevel } from "@/components/sensor/mic-level";
 import { PacifierIcon } from "@/components/icons/pacifier";
 import { useBleStore } from "@/stores/ble-store";
 import { useBabyStore } from "@/stores/baby-store";
@@ -177,6 +178,13 @@ export default function LivePage() {
                    packet?.bracelet?.hrSrc === 1 ? t("sensor.hrSourceBeat") :
                    undefined)
                 : extra;
+            // Under the Breathing Rate card, surface the raw mic pk-pk as a
+            // live meter — lets the parent verify the mic is picking up
+            // sound before trusting the derived rate.
+            const belowValue =
+              metric === "breathRate"
+                ? <MicLevel pkpk={packet?.hub.micPkpkNow} />
+                : undefined;
             return (
               <SensorCard
                 key={metric}
@@ -188,6 +196,7 @@ export default function LivePage() {
                 cfg={thresholds[metric]}
                 history={history[metric]}
                 extra={hrExtra}
+                belowValue={belowValue}
               />
             );
           });

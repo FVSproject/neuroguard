@@ -24,6 +24,7 @@ export function SensorCard({
   cfg,
   history,
   extra,
+  belowValue,
   className,
 }: {
   title: ReactNode;
@@ -34,6 +35,9 @@ export function SensorCard({
   cfg?: ThresholdConfig;
   history?: number[];
   extra?: ReactNode;
+  /** Optional strip rendered between the value and the sparkline. Used by
+   *  the Breathing Rate card to surface raw mic activity as a live meter. */
+  belowValue?: ReactNode;
   className?: string;
 }) {
   // Border colour follows the current state so the room glow doubles as an
@@ -81,6 +85,8 @@ export function SensorCard({
         <div className="text-[11px] font-medium text-muted">{unit}</div>
         {extra ? <div className="ms-auto text-[10px] uppercase text-muted/70">{extra}</div> : null}
       </div>
+
+      {belowValue ?? null}
 
       {history && history.length > 1 ? (
         <Sparkline
