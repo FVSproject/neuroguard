@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Cairo } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Toaster } from "sonner";
@@ -42,25 +43,33 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const dir = LOCALE_DIR[locale] ?? "ltr";
 
   return (
-    <html
-      lang={locale}
-      dir={dir}
-      className={`${inter.variable} ${cairo.variable} h-full antialiased`}
-      suppressHydrationWarning
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/live"
+      signUpFallbackRedirectUrl="/profile/new"
+      afterSignOutUrl="/"
     >
-      <body className="min-h-full flex flex-col bg-bg text-ink">
-        <NextIntlClientProvider messages={messages} locale={locale}>
-          {children}
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton={false}
-            expand={false}
-            visibleToasts={5}
-            offset={16}
-          />
-        </NextIntlClientProvider>
-      </body>
-    </html>
+      <html
+        lang={locale}
+        dir={dir}
+        className={`${inter.variable} ${cairo.variable} h-full antialiased`}
+        suppressHydrationWarning
+      >
+        <body className="min-h-full flex flex-col bg-bg text-ink">
+          <NextIntlClientProvider messages={messages} locale={locale}>
+            {children}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton={false}
+              expand={false}
+              visibleToasts={5}
+              offset={16}
+            />
+          </NextIntlClientProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

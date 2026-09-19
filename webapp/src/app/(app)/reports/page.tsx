@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { db } from "@/lib/db";
+import { packetsSince } from "@/lib/packet-db";
 import { useBabyStore } from "@/stores/baby-store";
 import type { PacketRecord } from "@/lib/types";
 
@@ -67,11 +67,12 @@ function ReportPane({ babyId, windowMs }: { babyId: string; windowMs: number }) 
     let cancelled = false;
     (async () => {
       const cutoff = Date.now() - windowMs;
-      const r = await db().packets
-        .where("babyId").equals(babyId)
-        .and((p) => p.tsMs >= cutoff)
-        .toArray();
-      if (!cancelled) setRows(r);
+      try {
+        const r = await packetsSince(babyId, cutoff);
+        if (!cancelled) setRows(r);
+      } catch {
+        if (!cancelled) setRows([]);
+      }
     })();
     return () => { cancelled = true; };
   }, [babyId, windowMs]);

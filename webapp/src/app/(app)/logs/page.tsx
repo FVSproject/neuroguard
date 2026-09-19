@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { db } from "@/lib/db";
+import { clearLogs, listLogs } from "@/lib/actions/logs";
 import { useBabyStore } from "@/stores/baby-store";
 import type { LogEntry, LogSeverity } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -42,11 +42,12 @@ export default function LogsPage() {
     if (!babyId) return;
     let cancelled = false;
     (async () => {
-      const rows = await db().logs
-        .where("babyId").equals(babyId)
-        .reverse()
-        .sortBy("tsMs");
-      if (!cancelled) setEntries(rows);
+      try {
+        const rows = await listLogs(babyId);
+        if (!cancelled) setEntries(rows);
+      } catch {
+        if (!cancelled) setEntries([]);
+      }
     })();
     // Refresh every 5 s so alarms show up while parents watch this tab.
     const iv = setInterval(() => setTick((v) => v + 1), 5000);
@@ -85,7 +86,7 @@ export default function LogsPage() {
   async function clearAll() {
     if (!babyId) return;
     if (!confirm(t("form.confirmDelete"))) return;
-    await db().logs.where("babyId").equals(babyId).delete();
+    await clearLogs(babyId);
     setEntries([]);
   }
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { getTranslations } from "next-intl/server";
-import { Bluetooth, BabyIcon, ArrowRight, Info } from "lucide-react";
+import { Bluetooth, BabyIcon, ArrowRight, Info, LogIn, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/layout/logo";
@@ -10,6 +12,8 @@ import { WristbandIcon } from "@/components/icons/wristband";
 
 export default async function LandingPage() {
   const t = await getTranslations();
+  const { userId } = await auth();
+  const isSignedIn = Boolean(userId);
 
   return (
     <>
@@ -22,8 +26,13 @@ export default async function LandingPage() {
               {t("app.name")}
             </span>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <LanguageToggle />
+            <SignedOut>
+              <Button asChild size="sm" variant="ghost" className="gap-1.5">
+                <Link href="/sign-in"><LogIn className="size-4" aria-hidden /> {t("auth.signIn")}</Link>
+              </Button>
+            </SignedOut>
           </div>
         </div>
       </header>
@@ -55,24 +64,38 @@ export default async function LandingPage() {
             </p>
 
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <Button asChild size="lg" className="h-12 gap-2 rounded-full px-6 text-base">
-                <Link href="/profile/new">
-                  <BabyIcon className="size-5" aria-hidden />
-                  {t("landing.createBaby")}
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="h-12 gap-2 rounded-full px-6 text-base"
-              >
-                <Link href="/live">
-                  <Bluetooth className="size-5" aria-hidden />
-                  {t("landing.connect")}
-                  <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
-                </Link>
-              </Button>
+              {isSignedIn ? (
+                <>
+                  <Button asChild size="lg" className="h-12 gap-2 rounded-full px-6 text-base">
+                    <Link href="/live">
+                      <Bluetooth className="size-5" aria-hidden />
+                      {t("landing.connect")}
+                      <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="h-12 gap-2 rounded-full px-6 text-base">
+                    <Link href="/profile/new">
+                      <BabyIcon className="size-5" aria-hidden />
+                      {t("landing.createBaby")}
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="lg" className="h-12 gap-2 rounded-full px-6 text-base">
+                    <Link href="/sign-up">
+                      <UserPlus className="size-5" aria-hidden />
+                      {t("auth.signUp")}
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="h-12 gap-2 rounded-full px-6 text-base">
+                    <Link href="/sign-in">
+                      <LogIn className="size-5" aria-hidden />
+                      {t("auth.signIn")}
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
 
             <p className="mt-2 flex items-start gap-2 text-sm text-muted">

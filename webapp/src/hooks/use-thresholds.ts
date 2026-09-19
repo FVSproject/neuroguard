@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { db } from "@/lib/db";
+import { getThresholds } from "@/lib/actions/thresholds";
 import { DEFAULT_THRESHOLDS, defaultThresholdsList } from "@/lib/thresholds";
 import type { MetricId, ThresholdConfig } from "@/lib/types";
 
@@ -16,13 +16,18 @@ export function useThresholds(babyId: string | null) {
       return;
     }
     (async () => {
-      const rec = await db().thresholds.get(babyId);
-      const list = rec?.entries ?? defaultThresholdsList();
-      const next = Object.fromEntries(list.map((t) => [t.metric, t])) as Record<
-        MetricId,
-        ThresholdConfig
-      >;
-      if (!cancelled) setMap(next);
+      try {
+        const list = await getThresholds(babyId);
+        const entries = list.length ? list : defaultThresholdsList();
+        const next = Object.fromEntries(entries.map((e) => [e.metric, e])) as Record<
+          MetricId,
+          ThresholdConfig
+        >;
+        if (!cancelled) setMap(next);
+      } catch {
+        // Fall back to defaults if the network is off or the user isn't signed in.
+        if (!cancelled) setMap(DEFAULT_THRESHOLDS);
+      }
     })();
     return () => {
       cancelled = true;

@@ -18,11 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { db } from "@/lib/db";
+import { getAlarmPrefs, saveAlarmPrefs } from "@/lib/actions/alarm-prefs";
+import { getThresholds, saveThresholds as saveThresholdsAction } from "@/lib/actions/thresholds";
+import { clearAllPackets } from "@/lib/packet-db";
 import { defaultThresholdsList } from "@/lib/thresholds";
 import { previewPattern } from "@/lib/alarm";
 import { useBabyStore } from "@/stores/baby-store";
-import type { AlarmPrefs, BabyThresholds, ThresholdConfig } from "@/lib/types";
+import type { AlarmPrefs, ThresholdConfig } from "@/lib/types";
 
 const METRIC_LABEL: Record<string, [labelKey: string, unitKey: string]> = {
   hr:           ["sensor.hr",         "sensor.hrUnit"],
@@ -98,13 +100,20 @@ export default function SettingsPage() {
     if (!babyId) return;
     let cancelled = false;
     (async () => {
-      const [th, ap] = await Promise.all([
-        db().thresholds.get(babyId),
-        db().alarmPrefs.get(babyId),
-      ]);
-      if (!cancelled) {
-        setThresholds(th?.entries ?? defaultThresholdsList());
-        setPrefs(ap ?? null);
+      try {
+        const [th, ap] = await Promise.all([
+          getThresholds(babyId),
+          getAlarmPrefs(babyId),
+        ]);
+        if (!cancelled) {
+          setThresholds(th.length ? th : defaultThresholdsList());
+          setPrefs(ap);
+        }
+      } catch {
+        if (!cancelled) {
+          setThresholds(defaultThresholdsList());
+          setPrefs(null);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -113,15 +122,14 @@ export default function SettingsPage() {
   async function saveThresholds(next: ThresholdConfig[]) {
     setThresholds(next);
     if (!babyId) return;
-    const rec: BabyThresholds = { babyId, entries: next, updatedAt: Date.now() };
-    await db().thresholds.put(rec);
+    await saveThresholdsAction(babyId, next);
   }
 
   async function savePrefs(patch: Partial<AlarmPrefs>) {
     if (!babyId || !prefs) return;
     const next: AlarmPrefs = { ...prefs, ...patch, updatedAt: Date.now() };
     setPrefs(next);
-    await db().alarmPrefs.put(next);
+    await saveAlarmPrefs(babyId, patch);
   }
 
   if (!babyId) {
@@ -270,16 +278,11 @@ export default function SettingsPage() {
                   className="gap-2 text-danger"
                   onClick={async () => {
                     if (!confirm(t("settings.clearAllHint") + "\n\n" + t("form.confirmDelete"))) return;
-                    // Wipe every table then clear per-locale caches.
-                    await Promise.all([
-                      db().babies.clear(),
-                      db().parents.clear(),
-                      db().emergencyContacts.clear(),
-                      db().thresholds.clear(),
-                      db().alarmPrefs.clear(),
-                      db().logs.clear(),
-                      db().packets.clear(),
-                    ]);
+                    // With Clerk + Neon in place, the babies + settings live on
+                    // the server. This button only wipes the LOCAL packet
+                    // buffer + client-side cached prefs. Use "Sign out" in the
+                    // header avatar menu (top-right) for a full session reset.
+                    await clearAllPackets();
                     localStorage.removeItem("ng.baby");
                     localStorage.removeItem("ng.ui");
                     toast.success(t("toast.allDataCleared"));

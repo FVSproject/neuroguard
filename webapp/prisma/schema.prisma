@@ -1,0 +1,125 @@
+// NeuroGuard — data model
+//
+// Single-user tenancy: one Clerk user per NeuroGuard account, each user
+// owns one or more Baby profiles. Every tenant-scoped row carries `userId`
+// (the Clerk user ID) and every server action filters on it. Cascades on
+// Baby ensure deleting a baby wipes its children.
+//
+// NOT modelled here: PacketRecord (1 Hz raw sensor samples). Those live in
+// client-side IndexedDB — see src/hooks/use-packet-recorder.ts. Only rare
+// events (LogEntry) hit the DB.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 removed `url` / `directUrl` from the schema. Connection strings
+// are now read by the CLI from prisma.config.ts, and by the runtime through
+// the adapter passed to PrismaClient (see src/lib/prisma.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- enums ----------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum LogKind {
+  CONNECTION
+  THRESHOLD
+  ALARM
+  NOTE
+  EVENT
+}
+
+enum LogSeverity {
+  INFO
+  WARN
+  ALERT
+  CRITICAL
+}
+
+// ---------- models ----------
+
+model Baby {
+  id            String   @id @default(cuid())
+  userId        String   @db.VarChar(64)     // Clerk user ID
+  name          String
+  dob           DateTime?                    // stored as UTC
+  weightKg      Float?
+  heightCm      Float?
+  gender        Gender?
+  notes         String?  @db.Text
+  photoDataUrl  String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  parents           Parent[]
+  emergencyContacts EmergencyContact[]
+  thresholds        BabyThresholds?
+  alarmPrefs        AlarmPrefs?
+  logs              LogEntry[]
+
+  @@index([userId])
+}
+
+model Parent {
+  id       String  @id @default(cuid())
+  babyId   String
+  name     String
+  phone    String?
+  email    String?
+  relation String?
+  baby     Baby    @relation(fields: [babyId], references: [id], onDelete: Cascade)
+
+  @@index([babyId])
+}
+
+model EmergencyContact {
+  id       String  @id @default(cuid())
+  babyId   String
+  name     String
+  phone    String
+  relation String?
+  order    Int
+  baby     Baby    @relation(fields: [babyId], references: [id], onDelete: Cascade)
+
+  @@index([babyId, order])
+}
+
+// One row per baby — thresholds stored as JSON blob (list of ThresholdConfig).
+// Cheap and flexible; a caregiver can add / disable metrics without a migration.
+model BabyThresholds {
+  babyId    String   @id
+  entries   Json
+  updatedAt DateTime @updatedAt
+  baby      Baby     @relation(fields: [babyId], references: [id], onDelete: Cascade)
+}
+
+model AlarmPrefs {
+  babyId       String   @id
+  soundEnabled Boolean
+  soundName    String     // "chime" | "pulse" | "siren"
+  volume       Float
+  vibrate      Boolean
+  updatedAt    DateTime @updatedAt
+  baby         Baby     @relation(fields: [babyId], references: [id], onDelete: Cascade)
+}
+
+model LogEntry {
+  id       Int         @id @default(autoincrement())
+  babyId   String
+  tsMs     BigInt
+  kind     LogKind
+  metric   String?
+  severity LogSeverity
+  message  String       @db.Text
+  value    Float?
+  baby     Baby         @relation(fields: [babyId], references: [id], onDelete: Cascade)
+
+  @@index([babyId, tsMs])
+}

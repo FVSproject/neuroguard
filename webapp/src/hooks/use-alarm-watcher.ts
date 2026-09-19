@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { createElement } from "react";
 
-import { db } from "@/lib/db";
+import { getAlarmPrefs } from "@/lib/actions/alarm-prefs";
+import { appendLog } from "@/lib/actions/logs";
 import { evaluate } from "@/lib/thresholds";
 import { playAlarm, stopAlarm } from "@/lib/alarm";
 import { AlarmToast, type AlarmToastLevel } from "@/components/alarm/alarm-toast";
@@ -64,8 +65,12 @@ export function useAlarmWatcher() {
     if (!babyId) return;
     let cancelled = false;
     (async () => {
-      const p = await db().alarmPrefs.get(babyId);
-      if (!cancelled) prefsRef.current = p ?? null;
+      try {
+        const p = await getAlarmPrefs(babyId);
+        if (!cancelled) prefsRef.current = p;
+      } catch {
+        if (!cancelled) prefsRef.current = null;
+      }
     })();
     return () => { cancelled = true; };
   }, [babyId]);
@@ -105,7 +110,7 @@ export function useAlarmWatcher() {
             },
           );
 
-          const entry: LogEntry = {
+          const entry: Omit<LogEntry, "id"> = {
             babyId: babyId!,
             tsMs: Date.now(),
             kind: state === "critical" || state === "alert" ? "alarm" : "threshold",
@@ -117,7 +122,9 @@ export function useAlarmWatcher() {
             message: msg,
             value: v ?? undefined,
           };
-          void db().logs.add(entry);
+          void appendLog(entry).catch(() => {
+            // Non-fatal — a network hiccup shouldn't kill the alarm pipeline
+          });
         }
         // Track the "worst" state so we know what sound to play.
         const order = { off: 0, stale: 1, ok: 2, watch: 3, alert: 4, critical: 5 } as const;

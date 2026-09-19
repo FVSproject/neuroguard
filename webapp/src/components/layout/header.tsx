@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 
 import { LogoMark } from "./logo";
 import { LanguageToggle } from "./language-toggle";
@@ -23,6 +24,15 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           <BabyPill />
           <LanguageToggle />
+          {/* Clerk's built-in avatar dropdown — includes "Sign out".
+              Post-sign-out redirect is set on <ClerkProvider> globally. */}
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "h-8 w-8 ring-1 ring-border",
+              },
+            }}
+          />
         </div>
       </div>
     </header>

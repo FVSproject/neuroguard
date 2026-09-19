@@ -4,6 +4,12 @@
     "tagline": "Smart pacifier · research prototype",
     "welcome": "Welcome to NeuroGuard"
   },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "signOut": "Sign out",
+    "account": "Account"
+  },
   "language": {
     "label": "Language",
     "english": "English",

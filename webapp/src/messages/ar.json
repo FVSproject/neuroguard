@@ -4,6 +4,12 @@
     "tagline": "اللهّاية الذكيّة · نموذج بحثيّ",
     "welcome": "مرحبًا بك في نيوروجارد"
   },
+  "auth": {
+    "signIn": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "signOut": "تسجيل الخروج",
+    "account": "الحساب"
+  },
   "language": {
     "label": "اللغة",
     "english": "English",

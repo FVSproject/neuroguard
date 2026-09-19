@@ -2,13 +2,13 @@
 
 import { useEffect } from "react";
 
-import { db, pruneOldPackets } from "@/lib/db";
+import { insertPacket, prunePackets } from "@/lib/packet-db";
 import { useBabyStore } from "@/stores/baby-store";
 import { useBleStore } from "@/stores/ble-store";
 import type { PacketRecord } from "@/lib/types";
 
-const WRITE_EVERY_MS = 5_000;    // 1 record every 5 s → 60 days per baby fits in ~1 M rows
-const PRUNE_EVERY_MS = 60_000;   // prune on the tail once a minute
+const WRITE_EVERY_MS = 5_000;    // 1 record every 5 s → ~7-day rolling buffer
+const PRUNE_EVERY_MS = 60_000;   // prune tail once a minute
 
 export function usePacketRecorder() {
   const babyId = useBabyStore((s) => s.currentBabyId);
@@ -26,7 +26,7 @@ export function usePacketRecorder() {
         if (now - lastWrite < WRITE_EVERY_MS) return;
         lastWrite = now;
 
-        const rec: PacketRecord = {
+        const rec: Omit<PacketRecord, "id"> = {
           babyId,
           tsMs: packet.tsMs,
           hr: packet.bracelet?.hrBpm,
@@ -43,11 +43,11 @@ export function usePacketRecorder() {
           posture: packet.bracelet?.posture,
           fingerPresent: packet.bracelet?.fingerPresent,
         };
-        void db().packets.add(rec);
+        void insertPacket(rec);
 
         if (now - lastPrune > PRUNE_EVERY_MS) {
           lastPrune = now;
-          void pruneOldPackets();
+          void prunePackets();
         }
       },
     );
