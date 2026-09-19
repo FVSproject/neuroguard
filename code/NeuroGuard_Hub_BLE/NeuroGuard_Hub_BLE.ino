@@ -193,7 +193,7 @@ BLEAdvertisedDevice*      pBleTarget  = nullptr;
 // this address — typical reconnect time drops from 5–15 s to <1 s.
 static BLEAddress g_cachedBraceletMac((uint8_t*)"\x00\x00\x00\x00\x00\x00");
 static bool       g_haveCachedMac    = false;
-static uint8_t    g_cachedAddrType   = BLE_ADDR_TYPE_PUBLIC;
+static uint8_t    g_cachedAddrType   = BLE_ADDR_PUBLIC;
 
 // Bluedroid's default connect timeout is portMAX_DELAY, so a stale MAC would
 // stall the main loop for tens of seconds. Cap directed connect to 2 s — if
