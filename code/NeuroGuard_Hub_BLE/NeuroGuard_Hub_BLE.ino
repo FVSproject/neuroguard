@@ -152,8 +152,10 @@ const uint32_t MIC_WINDOW_MS      = 50;
 // keep both in sync so the parent sees the bar turn teal exactly when
 // firmware fires a breath event.
 const int      BREATH_ON_PKPK     = 350;   // ~17 % pk-pk
-const int      BREATH_OFF_PKPK    = 175;   // hysteresis at half of ON
-const uint32_t BREATH_REFRACT_MS  = 250;
+// Tick cadence: fire one breath event every N ms while pk-pk stays above
+// BREATH_ON_PKPK. 1000 ms → the "N ev" chip on the web app ticks up by 1
+// per second the user is breathing/blowing over the mic threshold.
+const uint32_t BREATH_REFRACT_MS  = 1000;
 const uint32_t APNEA_ALERT_SEC    = 10;
 
 const uint32_t WINDOW_MS          = 60000;
@@ -441,27 +443,18 @@ void updateSuckDetector(float pct, uint32_t now) {
     }
   }
 }
-// Rising-edge crossing detector: exactly one event per upward crossing of
-// BREATH_ON_PKPK (17 % pk-pk), guarded by a 250 ms refractory so a single
-// noisy transition doesn't double-count.
-//
-// The previous fixed-threshold-with-hysteresis version required pk-pk to
-// drop below BREATH_OFF_PKPK (8 %) between fires, which never happened in
-// rooms with ambient noise > 8 %. Rising-edge sidesteps that entirely: as
-// long as pk-pk went BELOW the threshold at least once between two spikes,
-// the second spike counts.
-static int prevPkpk = 0;
-
+// Simple tick-counter: while pk-pk is at or above BREATH_ON_PKPK (17 %),
+// fire one event per BREATH_REFRACT_MS (= 1000 ms below). When pk-pk drops
+// below the threshold, no events fire — the counter pauses, doesn't reset.
+// That gives the "0,1,2,3,4 while blowing, stops when quiet" behavior the
+// user wants without any adaptive-baseline complexity.
 void updateBreathDetector(int pkpk, uint32_t now) {
-  bool crossedUp = (prevPkpk < BREATH_ON_PKPK) && (pkpk >= BREATH_ON_PKPK);
-  if (crossedUp && (now - lastBreathMs) > BREATH_REFRACT_MS) {
+  if (pkpk >= BREATH_ON_PKPK && (now - lastBreathMs) >= BREATH_REFRACT_MS) {
     lastBreathMs = now;
     pushEvent(breathEvents, nBreath, now, (float)pkpk);
-    Serial.print("[BREATH] fire pkpk="); Serial.print(pkpk);
-    Serial.print(" prev=");              Serial.print(prevPkpk);
+    Serial.print("[BREATH] tick pkpk="); Serial.print(pkpk);
     Serial.print(" n=");                 Serial.println(nBreath);
   }
-  prevPkpk = pkpk;
 }
 
 struct NnsMetrics { uint16_t sucks; uint16_t bursts; float meanPeak; float meanBurstSec; float cv; };
