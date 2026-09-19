@@ -8,7 +8,21 @@
     "signIn": "Sign in",
     "signUp": "Create account",
     "signOut": "Sign out",
-    "account": "Account"
+    "account": "Account",
+    "email": "Email",
+    "password": "Password",
+    "or": "or",
+    "signInWithGoogle": "Sign in with Google",
+    "continueWithGoogle": "Continue with Google",
+    "magicLink": "Email me a magic link instead",
+    "magicLinkSent": "Magic link sent — check your inbox.",
+    "checkEmail": "Confirmation email sent — click the link to finish.",
+    "welcomeBack": "Signed in.",
+    "haveAccount": "Already have an account?",
+    "noAccount": "New here?",
+    "enterEmailFirst": "Enter your email first.",
+    "signedOut": "Signed out.",
+    "profile": "Profile"
   },
   "language": {
     "label": "Language",

@@ -8,7 +8,21 @@
     "signIn": "تسجيل الدخول",
     "signUp": "إنشاء حساب",
     "signOut": "تسجيل الخروج",
-    "account": "الحساب"
+    "account": "الحساب",
+    "email": "البريد الإلكترونيّ",
+    "password": "كلمة المرور",
+    "or": "أو",
+    "signInWithGoogle": "الدخول بحساب Google",
+    "continueWithGoogle": "المتابعة بحساب Google",
+    "magicLink": "أرسل لي رابط دخول عبر البريد بدلاً من ذلك",
+    "magicLinkSent": "أُرسل رابط الدخول — تحقّق من بريدك.",
+    "checkEmail": "أُرسل بريد تأكيد — اضغط الرابط لإكمال التسجيل.",
+    "welcomeBack": "تمّ تسجيل الدخول.",
+    "haveAccount": "لديك حساب بالفعل؟",
+    "noAccount": "جديد هنا؟",
+    "enterEmailFirst": "أدخل بريدك الإلكترونيّ أوّلاً.",
+    "signedOut": "تمّ تسجيل الخروج.",
+    "profile": "الملفّ الشخصيّ"
   },
   "language": {
     "label": "اللغة",

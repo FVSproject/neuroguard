@@ -1,20 +1,9 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 import type { AlarmPrefs } from "@/lib/types";
-
-async function requireOwnership(babyId: string): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthenticated");
-  const owned = await prisma.baby.findFirst({
-    where: { id: babyId, userId },
-    select: { id: true },
-  });
-  if (!owned) throw new Error("Not found");
-}
 
 const DEFAULTS: Omit<AlarmPrefs, "babyId" | "updatedAt"> = {
   soundEnabled: true,
@@ -23,17 +12,29 @@ const DEFAULTS: Omit<AlarmPrefs, "babyId" | "updatedAt"> = {
   vibrate: true,
 };
 
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthenticated");
+  return supabase;
+}
+
 export async function getAlarmPrefs(babyId: string): Promise<AlarmPrefs> {
-  await requireOwnership(babyId);
-  const row = await prisma.alarmPrefs.findUnique({ where: { babyId } });
-  if (!row) return { babyId, ...DEFAULTS, updatedAt: Date.now() };
+  const supabase = await requireUser();
+  const { data, error } = await supabase
+    .from("alarm_prefs")
+    .select("*")
+    .eq("baby_id", babyId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return { babyId, ...DEFAULTS, updatedAt: Date.now() };
   return {
-    babyId: row.babyId,
-    soundEnabled: row.soundEnabled,
-    soundName: row.soundName as AlarmPrefs["soundName"],
-    volume: row.volume,
-    vibrate: row.vibrate,
-    updatedAt: row.updatedAt.getTime(),
+    babyId: data.baby_id,
+    soundEnabled: data.sound_enabled,
+    soundName: data.sound_name as AlarmPrefs["soundName"],
+    volume: data.volume,
+    vibrate: data.vibrate,
+    updatedAt: new Date(data.updated_at).getTime(),
   };
 }
 
@@ -41,11 +42,17 @@ export async function saveAlarmPrefs(
   babyId: string,
   patch: Partial<Omit<AlarmPrefs, "babyId" | "updatedAt">>,
 ): Promise<void> {
-  await requireOwnership(babyId);
-  await prisma.alarmPrefs.upsert({
-    where: { babyId },
-    create: { babyId, ...DEFAULTS, ...patch },
-    update: patch,
-  });
+  const supabase = await requireUser();
+  const row = {
+    baby_id: babyId,
+    ...(patch.soundEnabled !== undefined && { sound_enabled: patch.soundEnabled }),
+    ...(patch.soundName    !== undefined && { sound_name: patch.soundName }),
+    ...(patch.volume       !== undefined && { volume: patch.volume }),
+    ...(patch.vibrate      !== undefined && { vibrate: patch.vibrate }),
+  };
+  const { error } = await supabase
+    .from("alarm_prefs")
+    .upsert(row, { onConflict: "baby_id" });
+  if (error) throw new Error(error.message);
   revalidatePath("/settings");
 }

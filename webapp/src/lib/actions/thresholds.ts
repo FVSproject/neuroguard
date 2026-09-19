@@ -1,43 +1,38 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-import { prisma } from "@/lib/prisma";
 import { defaultThresholdsList } from "@/lib/thresholds";
+import { createClient } from "@/lib/supabase/server";
 import type { ThresholdConfig } from "@/lib/types";
 
-async function requireUser(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthenticated");
-  return userId;
-}
-
-async function requireOwnership(babyId: string): Promise<void> {
-  const userId = await requireUser();
-  const owned = await prisma.baby.findFirst({
-    where: { id: babyId, userId },
-    select: { id: true },
-  });
-  if (!owned) throw new Error("Not found");
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthenticated");
+  return supabase;
 }
 
 export async function getThresholds(babyId: string): Promise<ThresholdConfig[]> {
-  await requireOwnership(babyId);
-  const row = await prisma.babyThresholds.findUnique({ where: { babyId } });
-  return (row?.entries as unknown as ThresholdConfig[]) ?? defaultThresholdsList();
+  const supabase = await requireUser();
+  const { data, error } = await supabase
+    .from("baby_thresholds")
+    .select("entries")
+    .eq("baby_id", babyId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.entries as ThresholdConfig[] | undefined) ?? defaultThresholdsList();
 }
 
 export async function saveThresholds(
   babyId: string,
   entries: ThresholdConfig[],
 ): Promise<void> {
-  await requireOwnership(babyId);
-  await prisma.babyThresholds.upsert({
-    where: { babyId },
-    create: { babyId, entries: entries as object },
-    update: { entries: entries as object },
-  });
+  const supabase = await requireUser();
+  const { error } = await supabase
+    .from("baby_thresholds")
+    .upsert({ baby_id: babyId, entries }, { onConflict: "baby_id" });
+  if (error) throw new Error(error.message);
   revalidatePath("/settings");
   revalidatePath("/live");
 }

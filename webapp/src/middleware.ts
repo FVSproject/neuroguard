@@ -1,24 +1,14 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import type { NextRequest } from "next/server";
 
-// Everything under (app) requires sign-in. Public: landing page, sign-in/up,
-// favicons, and Next.js internals.
-const isProtected = createRouteMatcher([
-  "/live(.*)",
-  "/profile(.*)",
-  "/logs(.*)",
-  "/reports(.*)",
-  "/settings(.*)",
-]);
+import { updateSession } from "@/lib/supabase/middleware";
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtected(req)) await auth.protect();
-});
+export async function middleware(request: NextRequest) {
+  return updateSession(request);
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals + static files (unless requested explicitly)
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run middleware on API + tRPC
-    "/(api|trpc)(.*)",
+    // Run on everything except Next.js internals + static assets.
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?|ttf|ico)$).*)",
   ],
 };

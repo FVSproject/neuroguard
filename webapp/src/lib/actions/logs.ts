@@ -1,80 +1,71 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import type {
-  LogKind as PrismaLogKind,
-  LogSeverity as PrismaLogSeverity,
-} from "@prisma/client";
 
-import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 import type { LogEntry, LogSeverity } from "@/lib/types";
 
-async function requireOwnership(babyId: string): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthenticated");
-  const owned = await prisma.baby.findFirst({
-    where: { id: babyId, userId },
-    select: { id: true },
-  });
-  if (!owned) throw new Error("Not found");
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthenticated");
+  return supabase;
 }
 
-function serialize(row: {
+type Row = {
   id: number;
-  babyId: string;
-  tsMs: bigint;
-  kind: PrismaLogKind;
+  baby_id: string;
+  ts_ms: number;
+  kind: string;
   metric: string | null;
-  severity: PrismaLogSeverity;
+  severity: string;
   message: string;
   value: number | null;
-}): LogEntry {
+};
+
+function serialize(r: Row): LogEntry {
   return {
-    id: row.id,
-    babyId: row.babyId,
-    tsMs: Number(row.tsMs),
-    kind: row.kind.toLowerCase() as LogEntry["kind"],
-    metric: row.metric as LogEntry["metric"],
-    severity: row.severity.toLowerCase() as LogSeverity,
-    message: row.message,
-    value: row.value ?? undefined,
+    id: r.id,
+    babyId: r.baby_id,
+    tsMs: Number(r.ts_ms),
+    kind: r.kind as LogEntry["kind"],
+    metric: (r.metric ?? undefined) as LogEntry["metric"],
+    severity: r.severity as LogSeverity,
+    message: r.message,
+    value: r.value ?? undefined,
   };
 }
 
-export async function listLogs(
-  babyId: string,
-  limit = 500,
-): Promise<LogEntry[]> {
-  await requireOwnership(babyId);
-  const rows = await prisma.logEntry.findMany({
-    where: { babyId },
-    orderBy: { tsMs: "desc" },
-    take: limit,
-  });
-  return rows.map(serialize);
+export async function listLogs(babyId: string, limit = 500): Promise<LogEntry[]> {
+  const supabase = await requireUser();
+  const { data, error } = await supabase
+    .from("log_entries")
+    .select("*")
+    .eq("baby_id", babyId)
+    .order("ts_ms", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(serialize);
 }
 
-export async function appendLog(
-  entry: Omit<LogEntry, "id">,
-): Promise<void> {
-  await requireOwnership(entry.babyId);
-  await prisma.logEntry.create({
-    data: {
-      babyId: entry.babyId,
-      tsMs: BigInt(entry.tsMs),
-      kind: entry.kind.toUpperCase() as PrismaLogKind,
-      metric: entry.metric ?? null,
-      severity: entry.severity.toUpperCase() as PrismaLogSeverity,
-      message: entry.message,
-      value: entry.value ?? null,
-    },
+export async function appendLog(entry: Omit<LogEntry, "id">): Promise<void> {
+  const supabase = await requireUser();
+  const { error } = await supabase.from("log_entries").insert({
+    baby_id: entry.babyId,
+    ts_ms: entry.tsMs,
+    kind: entry.kind,
+    metric: entry.metric ?? null,
+    severity: entry.severity,
+    message: entry.message,
+    value: entry.value ?? null,
   });
+  if (error) throw new Error(error.message);
   revalidatePath("/logs");
 }
 
 export async function clearLogs(babyId: string): Promise<void> {
-  await requireOwnership(babyId);
-  await prisma.logEntry.deleteMany({ where: { babyId } });
+  const supabase = await requireUser();
+  const { error } = await supabase.from("log_entries").delete().eq("baby_id", babyId);
+  if (error) throw new Error(error.message);
   revalidatePath("/logs");
 }

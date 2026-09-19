@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { getTranslations } from "next-intl/server";
 import { Bluetooth, BabyIcon, ArrowRight, Info, LogIn, UserPlus } from "lucide-react";
 
@@ -9,11 +7,13 @@ import { LogoMark } from "@/components/layout/logo";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { PacifierIcon } from "@/components/icons/pacifier";
 import { WristbandIcon } from "@/components/icons/wristband";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function LandingPage() {
   const t = await getTranslations();
-  const { userId } = await auth();
-  const isSignedIn = Boolean(userId);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const isSignedIn = Boolean(user);
 
   return (
     <>
@@ -28,11 +28,11 @@ export default async function LandingPage() {
           </Link>
           <div className="flex items-center gap-2">
             <LanguageToggle />
-            <SignedOut>
+            {!isSignedIn ? (
               <Button asChild size="sm" variant="ghost" className="gap-1.5">
                 <Link href="/sign-in"><LogIn className="size-4" aria-hidden /> {t("auth.signIn")}</Link>
               </Button>
-            </SignedOut>
+            ) : null}
           </div>
         </div>
       </header>

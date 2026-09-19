@@ -1,69 +1,68 @@
 # NeuroGuard — Setup
 
-You need three accounts. All are free-tier for this project.
+Two accounts, both free tier.
 
-- **Clerk** — auth. https://dashboard.clerk.com
-- **Neon** — Postgres. https://console.neon.tech
+- **Supabase** — auth + Postgres + storage. https://supabase.com/dashboard
 - **Vercel** — hosting. https://vercel.com
 
-## 1. Clerk
+## 1. Supabase (5 min)
 
-1. Go to https://dashboard.clerk.com → **Create application**.
-2. Name it `neuroguard`. Enable Email + at least one social login (Google is easiest for parents).
-3. On the **API Keys** page, copy:
-   - **Publishable key** (starts with `pk_test_...`) → paste as `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   - **Secret key** (starts with `sk_test_...`) → paste as `CLERK_SECRET_KEY`
+1. https://supabase.com/dashboard → **New project**. Name it `neuroguard`,
+   pick the region closest to your users (`eu-central-1` for MENA).
+   Save the DB password somewhere safe (Supabase shows it once).
+2. Once the project is live, open **Settings → API** and copy two values:
+   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Open **SQL Editor → New query**, paste the entire contents of
+   `supabase/schema.sql`, and hit **Run**. This creates all six tables plus
+   row-level-security policies that scope every row to `auth.uid()`.
+4. **Auth → Providers**: leave Email enabled. Enable **Google** if you want
+   one-click sign-in (paste a Google OAuth client ID/secret — Supabase's
+   docs walk through the 5-minute Google Cloud setup).
+5. **Auth → URL Configuration**: add these to **Redirect URLs**:
+   - `http://localhost:3000/auth/callback`
+   - `https://<your-vercel-url>.vercel.app/auth/callback`
 
-## 2. Neon
-
-1. Go to https://console.neon.tech → **New Project**.
-2. Name it `neuroguard`. Region: pick the one closest to your users (`aws-eu-central-1` for MENA, `aws-us-east-1` for US).
-3. On the **Connection Details** page, copy the **Pooled connection** string → paste as `DATABASE_URL`.
-4. Also copy the **Direct connection** string (toggle "Direct connection") → paste as `DIRECT_URL`.
-
-Both should end with `?sslmode=require`.
-
-## 3. Local dev
+## 2. Local dev
 
 ```bash
 cd webapp
 cp .env.example .env.local
-# then paste your Clerk + Neon values into .env.local
+# paste the URL + anon key into .env.local
 
-npm install                 # installs deps + runs `prisma generate` via postinstall
-npm run prisma:migrate      # creates all tables in Neon (asks you to name the migration; "init" is fine)
-npm run dev                 # http://localhost:3000
+npm install
+npm run dev             # http://localhost:3000
 ```
 
-Open `http://localhost:3000` → click **Create account** → sign up with email → you're in.
+Open http://localhost:3000 → **Create account** → sign up with email or
+Google → dashboard.
 
-## 4. Deploy to Vercel
+## 3. Deploy to Vercel
 
-In the Vercel project (`fvs4/neuroguard`):
+1. Vercel project → **Settings → Environment Variables** → add
+   `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` for
+   Production / Preview / Development.
+2. **Settings → General → Root Directory** = `webapp` (if not already).
+3. **Deployments** → find the failed / latest build → **Redeploy**, or push
+   a commit.
 
-1. **Settings → Environment Variables**. Add every variable from `.env.local`
-   for **Production, Preview, Development** (paste-all in one shot works).
-2. **Settings → General → Root Directory** → `webapp` (if not already set).
-3. **Deployments → latest → Redeploy** OR push a new commit.
+## 4. Firmware / hardware
 
-The build command already runs `prisma generate` before `next build`, so
-Vercel will pick up the schema automatically. The first successful build
-also creates the tables on Neon if you ran `prisma:migrate` locally against
-the same DB.
+Unchanged. Flash `code/NeuroGuard_Hub_BLE/`, open the Vercel URL in Chrome
+on Android, sign in, click **Connect to hub**, pick **NG-Pacifier**.
 
-## 5. Firmware / hardware
+## Free-tier ceilings
 
-Unchanged from before — the frontend + backend switch didn't touch the
-ESP32 or bracelet sketches. Flash `code/NeuroGuard_Hub_BLE/` when ready,
-open the Vercel URL in Chrome on Android, sign in, click **Connect to hub**,
-pick **NG-Pacifier**.
+- **Supabase free** — 500 MB DB, 50 000 monthly active users, 1 GB storage.
+  Alarm logs are the only writes at runtime (sensor packets stay in the
+  browser IndexedDB), so we sit comfortably under quota.
+- **Vercel Hobby** — 100 GB bandwidth, plenty for parents opening the app.
 
-## Cost — free-tier ceilings
+## Security notes
 
-- **Clerk free** — 10 000 monthly active users. More than enough.
-- **Neon free** — 0.5 GB storage, 190 compute hours/month.
-- **Vercel Hobby** — 100 GB bandwidth, 100 GB-hours serverless execution.
-
-Alarm log entries are the only server-side writes at runtime; sensor packets
-still buffer in the browser's IndexedDB (`packet-db.ts`) so we stay well
-within the Neon quota.
+- The **anon key** is safe in `NEXT_PUBLIC_*` — clients can only see rows
+  where `auth.uid()` matches the row's owner, enforced by RLS on the DB
+  side. Do NOT paste the **service_role** key anywhere; the app doesn't
+  need it.
+- Rotate any DB password / key you paste into chat or a shared doc:
+  Supabase → Settings → Database → Reset password.

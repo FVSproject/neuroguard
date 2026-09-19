@@ -1,61 +1,54 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import type { Gender as PrismaGender } from "@prisma/client";
 
-import { prisma } from "@/lib/prisma";
 import { defaultThresholdsList } from "@/lib/thresholds";
+import { createClient } from "@/lib/supabase/server";
 import type { Baby, Gender } from "@/lib/types";
 
-async function requireUser(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthenticated");
-  return userId;
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthenticated");
+  return { supabase, userId: user.id };
 }
 
-function toGender(g?: Gender): PrismaGender | null {
-  if (!g) return null;
-  return g.toUpperCase() as PrismaGender;
-}
-function fromGender(g: PrismaGender | null): Gender | undefined {
-  return g ? (g.toLowerCase() as Gender) : undefined;
-}
-
-// Shape returned to the client — matches src/lib/types.ts `Baby`.
-function serialize(row: {
+type BabyRow = {
   id: string;
   name: string;
-  dob: Date | null;
-  weightKg: number | null;
-  heightCm: number | null;
-  gender: PrismaGender | null;
+  dob: string | null;
+  weight_kg: number | null;
+  height_cm: number | null;
+  gender: Gender | null;
   notes: string | null;
-  photoDataUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): Baby {
+  photo_data_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function serialize(row: BabyRow): Baby {
   return {
     id: row.id,
     name: row.name,
-    dob: row.dob ? row.dob.toISOString().slice(0, 10) : undefined,
-    weightKg: row.weightKg ?? undefined,
-    heightCm: row.heightCm ?? undefined,
-    gender: fromGender(row.gender),
+    dob: row.dob ?? undefined,
+    weightKg: row.weight_kg ?? undefined,
+    heightCm: row.height_cm ?? undefined,
+    gender: row.gender ?? undefined,
     notes: row.notes ?? undefined,
-    photoDataUrl: row.photoDataUrl ?? undefined,
-    createdAt: row.createdAt.getTime(),
-    updatedAt: row.updatedAt.getTime(),
+    photoDataUrl: row.photo_data_url ?? undefined,
+    createdAt: new Date(row.created_at).getTime(),
+    updatedAt: new Date(row.updated_at).getTime(),
   };
 }
 
 export async function listBabies(): Promise<Baby[]> {
-  const userId = await requireUser();
-  const rows = await prisma.baby.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-  });
-  return rows.map(serialize);
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("babies")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(serialize);
 }
 
 export async function createBaby(input: {
@@ -63,87 +56,86 @@ export async function createBaby(input: {
   parent?: { name: string; phone?: string; email?: string; relation?: string };
   contacts?: { name: string; phone: string; relation?: string }[];
 }): Promise<Baby> {
-  const userId = await requireUser();
-  const row = await prisma.$transaction(async (tx) => {
-    const baby = await tx.baby.create({
-      data: {
-        userId,
-        name: input.baby.name,
-        dob: input.baby.dob ? new Date(input.baby.dob) : null,
-        weightKg: input.baby.weightKg ?? null,
-        heightCm: input.baby.heightCm ?? null,
-        gender: toGender(input.baby.gender),
-        notes: input.baby.notes ?? null,
-        photoDataUrl: input.baby.photoDataUrl ?? null,
-      },
+  const { supabase, userId } = await requireUser();
+
+  const { data: baby, error: bErr } = await supabase
+    .from("babies")
+    .insert({
+      user_id: userId,
+      name: input.baby.name,
+      dob: input.baby.dob ?? null,
+      weight_kg: input.baby.weightKg ?? null,
+      height_cm: input.baby.heightCm ?? null,
+      gender: input.baby.gender ?? null,
+      notes: input.baby.notes ?? null,
+      photo_data_url: input.baby.photoDataUrl ?? null,
+    })
+    .select("*")
+    .single();
+  if (bErr || !baby) throw new Error(bErr?.message ?? "Failed to create baby");
+
+  // Parent (optional)
+  if (input.parent?.name) {
+    await supabase.from("parents").insert({
+      baby_id: baby.id,
+      name: input.parent.name,
+      phone: input.parent.phone ?? null,
+      email: input.parent.email ?? null,
+      relation: input.parent.relation ?? null,
     });
-    if (input.parent?.name) {
-      await tx.parent.create({
-        data: {
-          babyId: baby.id,
-          name: input.parent.name,
-          phone: input.parent.phone ?? null,
-          email: input.parent.email ?? null,
-          relation: input.parent.relation ?? null,
-        },
-      });
-    }
-    if (input.contacts?.length) {
-      await tx.emergencyContact.createMany({
-        data: input.contacts.map((c, i) => ({
-          babyId: baby.id,
-          name: c.name,
-          phone: c.phone,
-          relation: c.relation ?? null,
-          order: i,
-        })),
-      });
-    }
-    await tx.babyThresholds.create({
-      data: { babyId: baby.id, entries: defaultThresholdsList() as object },
-    });
-    await tx.alarmPrefs.create({
-      data: {
-        babyId: baby.id,
-        soundEnabled: true,
-        soundName: "pulse",
-        volume: 0.8,
-        vibrate: true,
-      },
-    });
-    return baby;
+  }
+
+  // Emergency contacts (optional)
+  if (input.contacts?.length) {
+    await supabase.from("emergency_contacts").insert(
+      input.contacts.map((c, i) => ({
+        baby_id: baby.id,
+        name: c.name,
+        phone: c.phone,
+        relation: c.relation ?? null,
+        order: i,
+      })),
+    );
+  }
+
+  // Seed defaults (thresholds + alarm prefs). Ignore errors — a caregiver can
+  // fill these in later from the Settings page.
+  await supabase.from("baby_thresholds").insert({
+    baby_id: baby.id,
+    entries: defaultThresholdsList(),
   });
+  await supabase.from("alarm_prefs").insert({ baby_id: baby.id });
 
   revalidatePath("/profile");
   revalidatePath("/live");
-  return serialize(row);
+  return serialize(baby);
 }
 
 export async function updateBaby(id: string, patch: Partial<Baby>): Promise<Baby> {
-  const userId = await requireUser();
-  // Verify ownership with a filtered updateMany — never trust the client's id.
-  const owned = await prisma.baby.findFirst({ where: { id, userId }, select: { id: true } });
-  if (!owned) throw new Error("Not found");
-
-  const row = await prisma.baby.update({
-    where: { id },
-    data: {
-      ...(patch.name       !== undefined && { name: patch.name }),
-      ...(patch.dob        !== undefined && { dob: patch.dob ? new Date(patch.dob) : null }),
-      ...(patch.weightKg   !== undefined && { weightKg: patch.weightKg ?? null }),
-      ...(patch.heightCm   !== undefined && { heightCm: patch.heightCm ?? null }),
-      ...(patch.gender     !== undefined && { gender: toGender(patch.gender) }),
-      ...(patch.notes      !== undefined && { notes: patch.notes ?? null }),
-      ...(patch.photoDataUrl !== undefined && { photoDataUrl: patch.photoDataUrl ?? null }),
-    },
-  });
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("babies")
+    .update({
+      ...(patch.name         !== undefined && { name: patch.name }),
+      ...(patch.dob          !== undefined && { dob: patch.dob ?? null }),
+      ...(patch.weightKg     !== undefined && { weight_kg: patch.weightKg ?? null }),
+      ...(patch.heightCm     !== undefined && { height_cm: patch.heightCm ?? null }),
+      ...(patch.gender       !== undefined && { gender: patch.gender ?? null }),
+      ...(patch.notes        !== undefined && { notes: patch.notes ?? null }),
+      ...(patch.photoDataUrl !== undefined && { photo_data_url: patch.photoDataUrl ?? null }),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Not found");
   revalidatePath("/profile");
-  return serialize(row);
+  return serialize(data);
 }
 
 export async function deleteBaby(id: string): Promise<void> {
-  const userId = await requireUser();
-  await prisma.baby.deleteMany({ where: { id, userId } });
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("babies").delete().eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/profile");
   revalidatePath("/live");
 }
