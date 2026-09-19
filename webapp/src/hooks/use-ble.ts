@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-import { connectHub, disconnectHub, isBleSupported } from "@/lib/ble";
+import { connectHub, disconnectHub, isBleSupported, sendHubCommand, hasCmdChannel } from "@/lib/ble";
 import { generateMockPacket } from "@/lib/mock-packet";
+import { HUB_CMD_RESCAN_BRACELET } from "@/lib/packet";
 import { useBleStore } from "@/stores/ble-store";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -82,5 +83,14 @@ export function useBle() {
     reset();
   }, [reset]);
 
-  return { status, connect, disconnect, mockEnabled };
+  // Ask the hub to drop its cached bracelet MAC and rediscover. Used when
+  // pairing a fresh bracelet or when the current one is stuck reconnecting.
+  const rescanBracelet = useCallback(async (): Promise<void> => {
+    if (!hasCmdChannel()) {
+      throw new Error("Hub firmware doesn't support commands (re-flash to enable).");
+    }
+    await sendHubCommand(HUB_CMD_RESCAN_BRACELET);
+  }, []);
+
+  return { status, connect, disconnect, rescanBracelet, mockEnabled };
 }

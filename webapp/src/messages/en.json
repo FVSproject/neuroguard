@@ -70,7 +70,8 @@
   "bracelet": {
     "linked": "Bracelet linked",
     "stale": "Bracelet · {sec} s ago",
-    "offline": "Bracelet offline"
+    "offline": "Bracelet offline",
+    "rescan": "Pair bracelet"
   },
   "baby": {
     "singular": "Baby",

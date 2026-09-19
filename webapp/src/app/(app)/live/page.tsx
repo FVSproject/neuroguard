@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Heart, Activity, Wind, Thermometer, Droplet, Wind as Air, BabyIcon, Bluetooth, RadioTower } from "lucide-react";
+import { Heart, Activity, Wind, Thermometer, Droplet, Wind as Air, BabyIcon, Bluetooth, RadioTower, Watch } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,7 +48,7 @@ export default function LivePage() {
   const status = useBleStore((s) => s.status);
   const packet = useBleStore((s) => s.lastPacket);
   const sessionStartMs = useBleStore((s) => s.sessionStartMs);
-  const { connect, disconnect, mockEnabled } = useBle();
+  const { connect, disconnect, rescanBracelet, mockEnabled } = useBle();
   const setMock = useUiStore((s) => s.setMockStream);
 
   const thresholds = useThresholds(currentId);
@@ -122,10 +123,29 @@ export default function LivePage() {
             </Label>
           </div>
           {status === "connected" ? (
-            <Button variant="outline" size="sm" onClick={disconnect} className="gap-2">
-              <RadioTower className="size-4" aria-hidden />
-              {t("landing.disconnect")}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await rescanBracelet();
+                    toast.success("Hub is rediscovering the bracelet…");
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : String(e));
+                  }
+                }}
+                className="gap-2"
+                title="Force the hub to drop its cached bracelet MAC and rescan"
+              >
+                <Watch className="size-4" aria-hidden />
+                {t("bracelet.rescan")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={disconnect} className="gap-2">
+                <RadioTower className="size-4" aria-hidden />
+                {t("landing.disconnect")}
+              </Button>
+            </>
           ) : (
             <Button size="sm" onClick={connect} className="gap-2">
               <Bluetooth className="size-4" aria-hidden />
