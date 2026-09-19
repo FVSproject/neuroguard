@@ -47,7 +47,7 @@ export function StateChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border font-medium",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border font-medium",
         size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
         STATE_STYLE[state],
         state === "critical" && "shadow-[0_0_0_3px_rgba(201,75,75,0.25)]",

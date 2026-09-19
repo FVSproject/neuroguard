@@ -58,8 +58,10 @@ export function SensorCard({
       aria-live="polite"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
-          {icon}
+        {/* min-w-0 is the magic bit — without it, the flex item can't shrink
+            below its content and the chip gets squashed to a two-line wrap. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+          <span className="shrink-0">{icon}</span>
           <span className="truncate">{title}</span>
         </div>
         <StateChip state={state} />

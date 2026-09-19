@@ -56,10 +56,9 @@ export function useAlarmWatcher() {
   const thresholds = useThresholds(babyId);
   const observe = useAlarmStore((s) => s.observe);
   const alarmSilenced = useUiStore((s) => s.alarmSilenced);
+  // Re-fetch prefs when the settings page bumps this counter on Save.
+  const revision = useAlarmStore((s) => s.settingsRevision);
 
-  // Cache the per-baby alarm prefs once — the settings page updates via a
-  // different code path that also flips this ref, so we don't need to refetch
-  // on every packet.
   const prefsRef = useRef<AlarmPrefs | null>(null);
   useEffect(() => {
     if (!babyId) return;
@@ -73,7 +72,7 @@ export function useAlarmWatcher() {
       }
     })();
     return () => { cancelled = true; };
-  }, [babyId]);
+  }, [babyId, revision]);
 
   useEffect(() => {
     if (!babyId) return;

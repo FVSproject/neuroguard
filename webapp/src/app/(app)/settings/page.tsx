@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Volume2, PlayCircle, RotateCcw, Trash2 } from "lucide-react";
+import { Volume2, PlayCircle, RotateCcw, Trash2, Save, CircleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,8 @@ import { clearAllPackets } from "@/lib/packet-db";
 import { defaultThresholdsList } from "@/lib/thresholds";
 import { previewPattern } from "@/lib/alarm";
 import { useBabyStore } from "@/stores/baby-store";
+import { useAlarmStore } from "@/stores/alarm-store";
+import { cn } from "@/lib/utils";
 import type { AlarmPrefs, ThresholdConfig } from "@/lib/types";
 
 const METRIC_LABEL: Record<string, [labelKey: string, unitKey: string]> = {
@@ -39,6 +41,13 @@ const METRIC_LABEL: Record<string, [labelKey: string, unitKey: string]> = {
   eco2:         ["sensor.eco2",       "sensor.eco2Unit"],
   tvoc:         ["sensor.tvoc",       "sensor.tvocUnit"],
   aqi:          ["sensor.eco2",       ""],
+};
+
+const DEFAULT_PREFS: Omit<AlarmPrefs, "babyId" | "updatedAt"> = {
+  soundEnabled: true,
+  soundName: "pulse",
+  volume: 0.8,
+  vibrate: true,
 };
 
 function ThresholdRow({
@@ -92,44 +101,83 @@ export default function SettingsPage() {
   const t = useTranslations();
   const babyId = useBabyStore((s) => s.currentBabyId);
   const deleteBaby = useBabyStore((s) => s.deleteBaby);
+  const bumpSettingsRevision = useAlarmStore((s) => s.bumpSettingsRevision);
 
+  // Buffered local state — all edits stay here until the user clicks Save.
   const [thresholds, setThresholds] = useState<ThresholdConfig[]>(defaultThresholdsList());
-  const [prefs, setPrefs] = useState<AlarmPrefs | null>(null);
+  const [prefs, setPrefs] = useState<Omit<AlarmPrefs, "babyId" | "updatedAt">>(DEFAULT_PREFS);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!babyId) return;
+    if (!babyId) { setLoading(false); return; }
     let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
         const [th, ap] = await Promise.all([
           getThresholds(babyId),
           getAlarmPrefs(babyId),
         ]);
-        if (!cancelled) {
-          setThresholds(th.length ? th : defaultThresholdsList());
-          setPrefs(ap);
-        }
+        if (cancelled) return;
+        setThresholds(th.length ? th : defaultThresholdsList());
+        setPrefs({
+          soundEnabled: ap.soundEnabled,
+          soundName: ap.soundName,
+          volume: ap.volume,
+          vibrate: ap.vibrate,
+        });
+        setDirty(false);
       } catch {
-        if (!cancelled) {
-          setThresholds(defaultThresholdsList());
-          setPrefs(null);
-        }
+        if (cancelled) return;
+        setThresholds(defaultThresholdsList());
+        setPrefs(DEFAULT_PREFS);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
   }, [babyId]);
 
-  async function saveThresholds(next: ThresholdConfig[]) {
-    setThresholds(next);
-    if (!babyId) return;
-    await saveThresholdsAction(babyId, next);
+  function editThreshold(i: number, patch: Partial<ThresholdConfig>) {
+    setThresholds((prev) => {
+      const next = [...prev];
+      next[i] = { ...prev[i], ...patch };
+      return next;
+    });
+    setDirty(true);
   }
 
-  async function savePrefs(patch: Partial<AlarmPrefs>) {
-    if (!babyId || !prefs) return;
-    const next: AlarmPrefs = { ...prefs, ...patch, updatedAt: Date.now() };
-    setPrefs(next);
-    await saveAlarmPrefs(babyId, patch);
+  function editPrefs(patch: Partial<typeof prefs>) {
+    setPrefs((prev) => ({ ...prev, ...patch }));
+    setDirty(true);
+  }
+
+  function resetThresholds() {
+    setThresholds(defaultThresholdsList());
+    setDirty(true);
+  }
+
+  async function saveAll() {
+    if (!babyId || !dirty) return;
+    setSaving(true);
+    try {
+      await Promise.all([
+        saveThresholdsAction(babyId, thresholds),
+        saveAlarmPrefs(babyId, prefs),
+      ]);
+      // Bump the revision — useThresholds + useAlarmWatcher subscribe to this
+      // and refetch, so the live dashboard picks up new thresholds within a
+      // second, no reload needed.
+      bumpSettingsRevision();
+      setDirty(false);
+      toast.success(t("settings.saved"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!babyId) {
@@ -143,8 +191,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header>
+    <div className="space-y-6 pb-24">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-3xl font-bold tracking-tight">{t("settings.title")}</h1>
       </header>
 
@@ -162,8 +210,9 @@ export default function SettingsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => saveThresholds(defaultThresholdsList())}
+                onClick={resetThresholds}
                 className="gap-2"
+                disabled={loading || saving}
               >
                 <RotateCcw className="size-4" aria-hidden />
                 {t("settings.resetThresholds")}
@@ -174,11 +223,7 @@ export default function SettingsPage() {
                 <ThresholdRow
                   key={cfg.metric}
                   cfg={cfg}
-                  onChange={(patch) => {
-                    const next = [...thresholds];
-                    next[i] = { ...cfg, ...patch };
-                    void saveThresholds(next);
-                  }}
+                  onChange={(patch) => editThreshold(i, patch)}
                 />
               ))}
             </CardContent>
@@ -192,18 +237,18 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
-                <Label htmlFor="soundEnabled">{t("alarm.sound")}</Label>
+                <Label htmlFor="soundEnabled">{t("settings.alarmEnabled")}</Label>
                 <Switch
                   id="soundEnabled"
-                  checked={prefs?.soundEnabled ?? true}
-                  onCheckedChange={(v) => savePrefs({ soundEnabled: v })}
+                  checked={prefs.soundEnabled}
+                  onCheckedChange={(v) => editPrefs({ soundEnabled: v })}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Label>{t("alarm.sound")}</Label>
                 <Select
-                  value={prefs?.soundName ?? "pulse"}
-                  onValueChange={(v) => savePrefs({ soundName: v as AlarmPrefs["soundName"] })}
+                  value={prefs.soundName}
+                  onValueChange={(v) => editPrefs({ soundName: v as AlarmPrefs["soundName"] })}
                 >
                   <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -215,7 +260,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => previewPattern(prefs?.soundName ?? "pulse", prefs?.volume ?? 0.8)}
+                  onClick={() => previewPattern(prefs.soundName, prefs.volume)}
                   className="gap-2"
                 >
                   <PlayCircle className="size-4" aria-hidden />
@@ -229,20 +274,20 @@ export default function SettingsPage() {
                   min={0}
                   max={1}
                   step={0.05}
-                  value={prefs?.volume ?? 0.8}
-                  onChange={(e) => savePrefs({ volume: Number(e.target.value) })}
+                  value={prefs.volume}
+                  onChange={(e) => editPrefs({ volume: Number(e.target.value) })}
                   className="w-64"
                 />
                 <span className="text-sm tabular text-muted">
-                  {Math.round((prefs?.volume ?? 0.8) * 100)}%
+                  {Math.round(prefs.volume * 100)}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="vibrate">{t("settings.vibrateOnAlarm")}</Label>
                 <Switch
                   id="vibrate"
-                  checked={prefs?.vibrate ?? true}
-                  onCheckedChange={(v) => savePrefs({ vibrate: v })}
+                  checked={prefs.vibrate}
+                  onCheckedChange={(v) => editPrefs({ vibrate: v })}
                 />
               </div>
             </CardContent>
@@ -278,10 +323,10 @@ export default function SettingsPage() {
                   className="gap-2 text-danger"
                   onClick={async () => {
                     if (!confirm(t("settings.clearAllHint") + "\n\n" + t("form.confirmDelete"))) return;
-                    // With Clerk + Neon in place, the babies + settings live on
-                    // the server. This button only wipes the LOCAL packet
-                    // buffer + client-side cached prefs. Use "Sign out" in the
-                    // header avatar menu (top-right) for a full session reset.
+                    // Server-side data (profiles, thresholds, logs) lives in
+                    // Supabase; this button only wipes the local packet buffer
+                    // + cached UI state. For a full account reset, use "Sign
+                    // out" in the header avatar menu.
                     await clearAllPackets();
                     localStorage.removeItem("ng.baby");
                     localStorage.removeItem("ng.ui");
@@ -298,6 +343,37 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Sticky footer with the Save button — always visible, so the user
+          never has to hunt for it after scrolling through 12 threshold rows. */}
+      <div
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-20 border-t border-border/80 backdrop-blur transition-colors lg:pl-56",
+          dirty ? "bg-warn-soft/90" : "bg-surface/90",
+        )}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2 text-sm">
+            {dirty ? (
+              <>
+                <CircleAlert className="size-4 text-warn" aria-hidden />
+                <span className="font-medium text-warn">{t("settings.unsavedChanges")}</span>
+              </>
+            ) : (
+              <span className="text-xs text-muted">{t("settings.allSaved")}</span>
+            )}
+          </div>
+          <Button
+            onClick={saveAll}
+            disabled={!dirty || saving}
+            className="gap-2"
+            size="sm"
+          >
+            <Save className="size-4" aria-hidden />
+            {saving ? t("settings.saving") : t("form.save")}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

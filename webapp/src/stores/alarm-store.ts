@@ -21,6 +21,10 @@ export type AlarmRow = {
 
 type State = {
   rows: Record<MetricId, AlarmRow>;
+  /** Bumped whenever the user hits Save on the Settings page. Hooks that
+   *  cache thresholds / alarm prefs subscribe to this and re-fetch, so the
+   *  running live dashboard picks up the new values without a page reload. */
+  settingsRevision: number;
 };
 
 type Actions = {
@@ -29,10 +33,13 @@ type Actions = {
   acknowledge: (metric: MetricId) => void;
   clearAll: () => void;
   activeAlarms: () => AlarmRow[];
+  bumpSettingsRevision: () => void;
 };
 
 export const useAlarmStore = create<State & Actions>()((set, get) => ({
   rows: {} as Record<MetricId, AlarmRow>,
+  settingsRevision: 0,
+  bumpSettingsRevision: () => set((s) => ({ settingsRevision: s.settingsRevision + 1 })),
 
   observe: (metric, state, value) => {
     const now = Date.now();

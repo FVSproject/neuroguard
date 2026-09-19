@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 
 import { getThresholds } from "@/lib/actions/thresholds";
 import { DEFAULT_THRESHOLDS, defaultThresholdsList } from "@/lib/thresholds";
+import { useAlarmStore } from "@/stores/alarm-store";
 import type { MetricId, ThresholdConfig } from "@/lib/types";
 
 export function useThresholds(babyId: string | null) {
   const [map, setMap] = useState<Record<MetricId, ThresholdConfig>>(() => DEFAULT_THRESHOLDS);
+  // Bumped by the Settings page on Save — forces us to re-fetch so the live
+  // dashboard picks up new thresholds without a page reload.
+  const revision = useAlarmStore((s) => s.settingsRevision);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +36,7 @@ export function useThresholds(babyId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [babyId]);
+  }, [babyId, revision]);
 
   return map;
 }
