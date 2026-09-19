@@ -23,6 +23,12 @@ import type { MetricId } from "@/lib/types";
 
 const METRICS = ["hr", "spo2", "rmssd", "suckRate", "breathRate", "apneaSec", "stillnessSec", "tempC", "rhPct", "eco2"] as const;
 
+// Metrics that come from the foot bracelet — if the bracelet isn't linked
+// (or its last packet is more than a few seconds stale), we want the cards
+// to say "Sensor off" or "Stale — 12 s" instead of a stale numeric reading.
+const BRACELET_METRICS = new Set<MetricId>(["hr", "spo2", "rmssd", "sdnn", "stillnessSec"]);
+const BRACELET_STALE_SEC = 5;
+
 function fmt(v: number | null | undefined, digits = 0): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   return v.toFixed(digits);
@@ -66,12 +72,23 @@ export default function LivePage() {
   }, [packet]);
 
   /**
-   * Compute the display state for a metric — override to "warmingUp" while
-   * the sensor hasn't accumulated enough data (see src/lib/readiness.ts).
-   * Also computes the countdown text for the card's threshold sub-line so
-   * the user knows how long the wait is.
+   * Compute the display state for a metric. Priority order:
+   *   1. Bracelet metric with no linked bracelet → "off" (Sensor off).
+   *   2. Bracelet metric with stale link (> 5 s since last update) → "stale"
+   *      with age hint. Distinct from "warming up" — the metric IS ready,
+   *      the wireless link is just flaky.
+   *   3. Still inside the warmup window → "warmingUp" + seconds-remaining.
+   *   4. Otherwise → evaluate() against the (auto-scaled) threshold band.
    */
   function stateFor(metric: MetricId): { state: MetricState; extra?: string } {
+    if (BRACELET_METRICS.has(metric)) {
+      if (!packet || !packet.braceletLinked) {
+        return { state: "off" };
+      }
+      if (packet.braceletAgeSec > BRACELET_STALE_SEC) {
+        return { state: "stale", extra: `${packet.braceletAgeSec}s ago` };
+      }
+    }
     if (!isMetricReady(metric, sessionStartMs, nowMs)) {
       const sec = secondsUntilReady(metric, sessionStartMs, nowMs);
       return { state: "warmingUp", extra: sec > 0 ? `${sec}s` : undefined };

@@ -36,6 +36,38 @@ export function defaultThresholdsList(): ThresholdConfig[] {
 export type MetricState = "ok" | "watch" | "alert" | "critical" | "stale" | "off" | "warmingUp";
 
 /**
+ * Resolve effective critical bounds:
+ *
+ *   1. Honour stored criticalMin/criticalMax **only if they lie outside the
+ *      user's normal band**. A stored `criticalMax=27` on a `18..38` normal
+ *      range is nonsensical (it's inside the safe zone), so we ignore it —
+ *      that was the "27.2 °C flagged critical inside Normal 18–38 °C" bug.
+ *   2. For any missing critical bound, derive it as 15 % of the band width
+ *      past the normal edge (or 10 % of the bound itself if only one side
+ *      is set). Same shape as most medical dashboards: a soft margin, not a
+ *      hair-trigger.
+ */
+function effectiveCritical(cfg: ThresholdConfig): { critLo?: number; critHi?: number } {
+  let critLo = cfg.criticalMin;
+  let critHi = cfg.criticalMax;
+  const { min, max } = cfg;
+
+  if (min !== undefined && critLo !== undefined && critLo >= min) critLo = undefined;
+  if (max !== undefined && critHi !== undefined && critHi <= max) critHi = undefined;
+
+  if (min !== undefined && max !== undefined) {
+    const width = max - min;
+    if (critLo === undefined) critLo = min - width * 0.15;
+    if (critHi === undefined) critHi = max + width * 0.15;
+  } else {
+    if (min !== undefined && critLo === undefined) critLo = min - Math.abs(min) * 0.1;
+    if (max !== undefined && critHi === undefined) critHi = max + Math.abs(max) * 0.1;
+  }
+
+  return { critLo, critHi };
+}
+
+/**
  * Given the current value + configured thresholds, return which state the
  * metric is in. `null` values collapse to "stale" so a card can render an
  * appropriate no-data affordance.
@@ -47,8 +79,7 @@ export function evaluate(
   if (value === null || value === undefined || Number.isNaN(value)) return "stale";
   if (!cfg || !cfg.enabled) return "ok";
 
-  const critLo = cfg.criticalMin;
-  const critHi = cfg.criticalMax;
+  const { critLo, critHi } = effectiveCritical(cfg);
   const lo = cfg.min;
   const hi = cfg.max;
 
@@ -58,9 +89,18 @@ export function evaluate(
   if ((lo !== undefined && value < lo) || (hi !== undefined && value > hi)) {
     return "alert";
   }
-  // "watch" band = within 10 % of a soft bound
-  if (lo !== undefined && value < lo * 1.1) return "watch";
-  if (hi !== undefined && value > hi * 0.9) return "watch";
+
+  // "watch" — within 10 % of the band width from an edge. Width-based so it
+  // scales with whatever range the caregiver picked; the old "0.9 × hi" hack
+  // fired watch at 34.2 °C on a 18–38 normal range, which was way too eager.
+  if (lo !== undefined && hi !== undefined) {
+    const margin = (hi - lo) * 0.1;
+    if (value < lo + margin || value > hi - margin) return "watch";
+  } else if (lo !== undefined) {
+    if (value < lo + Math.abs(lo) * 0.05) return "watch";
+  } else if (hi !== undefined) {
+    if (value > hi - Math.abs(hi) * 0.05) return "watch";
+  }
   return "ok";
 }
 
