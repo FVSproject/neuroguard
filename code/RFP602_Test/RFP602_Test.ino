@@ -129,8 +129,12 @@ const uint32_t BURST_GAP_MS    = 1500;    // inter-suck gap > this ⇒ new burst
 
 // --------------------------- Mic / Respiration ------------------------------
 const uint32_t MIC_WINDOW_MS      = 50;   // pk-pk sampling window
-const int      BREATH_ON_PKPK     = 300;  // raw pk-pk to register a resp event
-const int      BREATH_OFF_PKPK    = 150;
+// 17 % of the 12-bit ADC's 2048 half-swing → 348, rounded to 350.
+// Matches the color-transition point of the MicLevel meter in the web app;
+// keep both in sync so the parent sees the bar turn teal exactly when
+// firmware fires a breath event.
+const int      BREATH_ON_PKPK     = 350;  // ~17 % pk-pk to register a resp event
+const int      BREATH_OFF_PKPK    = 175;  // hysteresis at half of ON
 const uint32_t BREATH_REFRACT_MS  = 250;  // minimum spacing between events
 const uint32_t APNEA_ALERT_SEC    = 10;   // demo threshold (clinical ~20 s)
 

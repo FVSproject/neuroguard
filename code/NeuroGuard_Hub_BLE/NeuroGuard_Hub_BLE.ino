@@ -136,8 +136,12 @@ const float    SUCK_OFF_PCT     = 8.0f;
 const uint32_t BURST_GAP_MS     = 1500;
 
 const uint32_t MIC_WINDOW_MS      = 50;
-const int      BREATH_ON_PKPK     = 300;
-const int      BREATH_OFF_PKPK    = 150;
+// 17 % of the 12-bit ADC's 2048 half-swing → 348, rounded to 350.
+// Matches the color-transition point of the MicLevel meter in the web app;
+// keep both in sync so the parent sees the bar turn teal exactly when
+// firmware fires a breath event.
+const int      BREATH_ON_PKPK     = 350;   // ~17 % pk-pk
+const int      BREATH_OFF_PKPK    = 175;   // hysteresis at half of ON
 const uint32_t BREATH_REFRACT_MS  = 250;
 const uint32_t APNEA_ALERT_SEC    = 10;
 
