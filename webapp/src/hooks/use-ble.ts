@@ -26,6 +26,14 @@ export function useBle() {
   const deviceRef  = useRef<BluetoothDevice | null>(null);
   const mockRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Detect browsers without Web Bluetooth (Safari, iOS, Firefox) AFTER mount
+  // so the initial SSR render doesn't diverge from the client. The store
+  // starts as "disconnected" on both server and client — this effect only
+  // flips it to "unsupported" on the client, after hydration has settled.
+  useEffect(() => {
+    if (!isBleSupported()) setStatus("unsupported", null);
+  }, [setStatus]);
+
   // --- Mock stream: cheapest possible "connection" for local dev -----------
   useEffect(() => {
     if (!mockEnabled) {

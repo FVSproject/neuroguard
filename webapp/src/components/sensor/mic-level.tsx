@@ -21,7 +21,17 @@ import { cn } from "@/lib/utils";
  */
 const BREATH_ON_PCT = 17;
 
-export function MicLevel({ pkpk }: { pkpk: number | undefined }) {
+export function MicLevel({
+  pkpk,
+  eventsPerMin,
+}: {
+  pkpk: number | undefined;
+  /** Optional: raw firmware event count in the last 60 s. When passed, we
+   *  render a small "N ev/min" chip so every threshold-crossing visibly
+   *  bumps a number by 1 — the primary breaths/min value only ticks every
+   *  2 events because of the inhale+exhale ÷2 heuristic. */
+  eventsPerMin?: number;
+}) {
   const raw = Math.max(0, Math.round(pkpk ?? 0));
   const pct = Math.min(100, Math.round((raw / 2048) * 100));
   const overThreshold = pct >= BREATH_ON_PCT;
@@ -44,9 +54,6 @@ export function MicLevel({ pkpk }: { pkpk: number | undefined }) {
           )}
           style={{ width: `${pct}%` }}
         />
-        {/* Fixed tick mark at the breath-event threshold, so the parent
-            sees where the trigger point sits and can watch the fill cross
-            it in real time. */}
         <span
           className="pointer-events-none absolute top-0 h-full w-px bg-ink/40"
           style={{ left: `${BREATH_ON_PCT}%` }}
@@ -56,6 +63,14 @@ export function MicLevel({ pkpk }: { pkpk: number | undefined }) {
       <span className="tabular font-medium min-w-[2.5rem] text-right">
         {pct}%
       </span>
+      {eventsPerMin !== undefined ? (
+        <span
+          className="tabular font-semibold min-w-[3rem] rounded-full bg-brand-soft px-1.5 py-0.5 text-center text-brand"
+          title="Raw mic events in the last 60 s — every threshold crossing bumps this by 1"
+        >
+          {eventsPerMin} ev
+        </span>
+      ) : null}
     </div>
   );
 }

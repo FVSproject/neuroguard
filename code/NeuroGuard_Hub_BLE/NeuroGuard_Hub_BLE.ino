@@ -188,6 +188,18 @@ BLEClient*                pBleClient  = nullptr;
 BLERemoteCharacteristic*  pBleChr     = nullptr;
 BLEAdvertisedDevice*      pBleTarget  = nullptr;
 
+// Cache the bracelet's MAC after the FIRST successful discovery. Subsequent
+// reconnects skip scanning entirely and use a directed connect straight to
+// this address — typical reconnect time drops from 5–15 s to <1 s.
+static BLEAddress g_cachedBraceletMac((uint8_t*)"\x00\x00\x00\x00\x00\x00");
+static bool       g_haveCachedMac    = false;
+static uint8_t    g_cachedAddrType   = BLE_ADDR_PUBLIC;
+
+// Bluedroid's default connect timeout is portMAX_DELAY, so a stale MAC would
+// stall the main loop for tens of seconds. Cap directed connect to 2 s — if
+// the bracelet isn't reachable, we fall back to a scan on the next tick.
+static const uint32_t DIRECTED_CONNECT_TIMEOUT_MS = 2000;
+
 static void braceletNotifyCB(BLERemoteCharacteristic* /*c*/, uint8_t* data, size_t len, bool /*isNotify*/) {
   if (len == sizeof(BraceletWire)) {
     memcpy(&lastBracelet, data, len);
@@ -215,13 +227,10 @@ class NgClientCB : public BLEClientCallbacks {
   }
 };
 
-bool tryConnectBracelet() {
-  if (!pBleTarget) return false;
-  if (pBleClient) { pBleClient->disconnect(); delete pBleClient; pBleClient = nullptr; }
-
-  pBleClient = BLEDevice::createClient();
-  pBleClient->setClientCallbacks(new NgClientCB());
-  if (!pBleClient->connect(pBleTarget)) { Serial.println("[BLE central] connect() failed"); return false; }
+// Finish the connect: discover service, subscribe to notifications. Shared by
+// both the "discovered via scan" path and the "directed reconnect via cached
+// MAC" path.
+bool finishConnect() {
   auto svc = pBleClient->getService(NG_BRACELET_SVC_UUID);
   if (!svc) { Serial.println("[BLE central] service NOT FOUND"); pBleClient->disconnect(); return false; }
   pBleChr = svc->getCharacteristic(NG_BRACELET_CHR_UUID);
@@ -232,16 +241,63 @@ bool tryConnectBracelet() {
   return true;
 }
 
+bool tryConnectBracelet() {
+  if (!pBleTarget) return false;
+  if (pBleClient) { pBleClient->disconnect(); delete pBleClient; pBleClient = nullptr; }
+
+  pBleClient = BLEDevice::createClient();
+  pBleClient->setClientCallbacks(new NgClientCB());
+  if (!pBleClient->connect(pBleTarget)) { Serial.println("[BLE central] connect() failed"); return false; }
+
+  // Cache the MAC + address type so subsequent reconnects skip scanning.
+  g_cachedBraceletMac = pBleTarget->getAddress();
+  g_cachedAddrType    = pBleTarget->getAddressType();
+  g_haveCachedMac     = true;
+  Serial.print("[BLE central] cached bracelet MAC: ");
+  Serial.println(g_cachedBraceletMac.toString().c_str());
+
+  return finishConnect();
+}
+
+// Directed reconnect: use the cached MAC to connect straight to the bracelet
+// without scanning first. Bluedroid's scan discovery is slow (5–15 s in
+// practice), so bypassing it collapses reconnect to <1 s in the common case.
+bool tryDirectedReconnect() {
+  if (!g_haveCachedMac) return false;
+  if (pBleClient) { pBleClient->disconnect(); delete pBleClient; pBleClient = nullptr; }
+
+  Serial.print("[BLE central] directed reconnect to ");
+  Serial.println(g_cachedBraceletMac.toString().c_str());
+  pBleClient = BLEDevice::createClient();
+  pBleClient->setClientCallbacks(new NgClientCB());
+  if (!pBleClient->connect(g_cachedBraceletMac, g_cachedAddrType, DIRECTED_CONNECT_TIMEOUT_MS)) {
+    Serial.println("[BLE central] directed connect() timed out — falling back to scan");
+    return false;
+  }
+  return finishConnect();
+}
+
 void bleCentralTick() {
+  // 1) A previous scan found the bracelet — connect using that discovery.
   if (pBleTarget && !bleConnected) {
     if (tryConnectBracelet()) { delete pBleTarget; pBleTarget = nullptr; }
     else                      { delete pBleTarget; pBleTarget = nullptr; bleScanning = false; }
+    return;
   }
+  // 2) Not connected, not scanning. If we have a cached MAC (i.e. this is a
+  //    reconnect after a previously successful pairing), try directed connect
+  //    first — much faster than re-scanning.
+  if (!bleConnected && !bleScanning && g_haveCachedMac) {
+    if (tryDirectedReconnect()) return;
+    // Directed connect failed — fall through and start a fresh scan.
+  }
+  // 3) Fallback / cold-boot: active scan at ~100 % duty for lowest discovery
+  //    latency on Bluedroid.
   if (!bleConnected && !bleScanning) {
     BLEScan* s = BLEDevice::getScan();
     s->setActiveScan(true);
-    s->setInterval(160);
-    s->setWindow(120);
+    s->setInterval(96);     // 60 ms
+    s->setWindow(96);       // 60 ms → 100 % duty (scan continuously)
     s->start(0, nullptr, false);
     bleScanning = true;
     Serial.println("[BLE central] scanning for NG-Bracelet…");

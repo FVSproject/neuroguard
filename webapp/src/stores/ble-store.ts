@@ -36,8 +36,13 @@ type Actions = {
   reset: () => void;
 };
 
+// NOTE: keep this constant across server + client. Detecting `navigator` here
+// would give "unsupported" on the server and "disconnected" on the client,
+// producing a hydration mismatch (React #418) in every layout that reads
+// `status`. The `useBle` hook flips to "unsupported" from a mount effect
+// instead, which runs only on the client and after hydration has settled.
 const initial: State = {
-  status: typeof navigator !== "undefined" && "bluetooth" in navigator ? "disconnected" : "unsupported",
+  status: "disconnected",
   deviceName: null,
   lastError: null,
   lastPacket: null,
