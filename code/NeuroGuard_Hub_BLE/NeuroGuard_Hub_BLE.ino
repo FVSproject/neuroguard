@@ -176,7 +176,6 @@ Event    breathEvents[MAX_EVENTS]; int nBreath = 0;
 
 bool     suckActive     = false;
 float    suckPeakPct    = 0.0f;
-bool     breathActive   = false;
 uint32_t lastBreathMs   = 0;
 
 float    lastTempC = 25.0f, lastRH = 50.0f;
@@ -442,52 +441,27 @@ void updateSuckDetector(float pct, uint32_t now) {
     }
   }
 }
-// Adaptive breath detector: tracks a slow EMA of ambient pk-pk and fires
-// when the sample rises significantly above it. The old fixed-threshold
-// version stalled in rooms where ambient noise kept pk-pk above the rearm
-// threshold (BREATH_OFF_PKPK = 175 counts / 8 %) — the detector latched
-// into "high" state and never fired again after boot.
+// Rising-edge crossing detector: exactly one event per upward crossing of
+// BREATH_ON_PKPK (17 % pk-pk), guarded by a 250 ms refractory so a single
+// noisy transition doesn't double-count.
 //
-// The baseline decays FAST toward pk-pk when the signal is below baseline
-// (silence following a spike), and SLOW when above (so a loud sustained
-// breath doesn't drag the baseline up before we can fire on the next).
-static float breathBaseline = 0.0f;
+// The previous fixed-threshold-with-hysteresis version required pk-pk to
+// drop below BREATH_OFF_PKPK (8 %) between fires, which never happened in
+// rooms with ambient noise > 8 %. Rising-edge sidesteps that entirely: as
+// long as pk-pk went BELOW the threshold at least once between two spikes,
+// the second spike counts.
+static int prevPkpk = 0;
 
 void updateBreathDetector(int pkpk, uint32_t now) {
-  if (breathBaseline == 0.0f) breathBaseline = (float)pkpk;
-
-  // Fire threshold: 300 counts above baseline (≈15 % pk-pk swing above
-  // ambient), floored at BREATH_ON_PKPK so quiet breaths in a silent room
-  // still register at the intended sensitivity.
-  int fireThresh  = max(BREATH_ON_PKPK, (int)(breathBaseline + 300.0f));
-  // Rearm threshold: within +100 counts of baseline (~5 % pk-pk). Doesn't
-  // require true silence — just a drop back toward ambient.
-  int rearmThresh = (int)(breathBaseline + 100.0f);
-
-  if (!breathActive) {
-    if (pkpk >= fireThresh && (now - lastBreathMs) > BREATH_REFRACT_MS) {
-      breathActive = true;
-      lastBreathMs = now;
-      pushEvent(breathEvents, nBreath, now, (float)pkpk);
-      Serial.print("[BREATH] fire pkpk="); Serial.print(pkpk);
-      Serial.print(" base=");              Serial.print((int)breathBaseline);
-      Serial.print(" thresh=");            Serial.print(fireThresh);
-      Serial.print(" n=");                 Serial.println(nBreath);
-    }
-  } else if (pkpk <= rearmThresh) {
-    breathActive = false;
+  bool crossedUp = (prevPkpk < BREATH_ON_PKPK) && (pkpk >= BREATH_ON_PKPK);
+  if (crossedUp && (now - lastBreathMs) > BREATH_REFRACT_MS) {
+    lastBreathMs = now;
+    pushEvent(breathEvents, nBreath, now, (float)pkpk);
+    Serial.print("[BREATH] fire pkpk="); Serial.print(pkpk);
+    Serial.print(" prev=");              Serial.print(prevPkpk);
+    Serial.print(" n=");                 Serial.println(nBreath);
   }
-
-  // Baseline update — fast down (0.10 weight on new sample when below),
-  // slow up (0.005 when above). Freezes while a breath is active so the
-  // spike itself doesn't corrupt the baseline.
-  if (!breathActive) {
-    if (pkpk < breathBaseline) {
-      breathBaseline = breathBaseline * 0.90f + (float)pkpk * 0.10f;
-    } else {
-      breathBaseline = breathBaseline * 0.995f + (float)pkpk * 0.005f;
-    }
-  }
+  prevPkpk = pkpk;
 }
 
 struct NnsMetrics { uint16_t sucks; uint16_t bursts; float meanPeak; float meanBurstSec; float cv; };
