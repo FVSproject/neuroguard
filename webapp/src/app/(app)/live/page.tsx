@@ -183,7 +183,7 @@ export default function LivePage() {
             // cards. Lets the parent watch the amplitude cross the firmware
             // trigger tick before trusting the aggregated rate.
             const belowValue =
-              metric === "breathRate" ? <MicLevel pkpk={packet?.hub.micPkpkNow} /> :
+              metric === "breathRate" ? <MicLevel pkpk={packet?.hub.micPkpkNow} eventsPerMin={packet?.hub.respEventsPerMin} /> :
               metric === "suckRate"   ? <FsrLevel pct={packet?.hub.fsrPctNow} /> :
               undefined;
             return (
