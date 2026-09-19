@@ -559,7 +559,11 @@ void buildAndPushCombined(uint32_t now, float fsrPct, int micPkPk) {
   pkt.hub.regularity_cv_x1000       = (uint16_t)constrain((int)roundf(nns.cv * 1000.0f), 0, 65535);
   pkt.hub.mic_pkpk_now              = (uint16_t)constrain(micPkPk, 0, 65535);
   pkt.hub.resp_events_per_min       = nBreath;
-  pkt.hub.est_breaths_per_min       = (uint16_t)(nBreath / 2);
+  // Main "breaths/min" value shown on the Breathing Rate card. With the
+  // simplified tick-per-second detector, this IS nBreath — one event per
+  // second above 17 % = one "breath" in the display. Don't divide by 2
+  // (that was the old inhale+exhale heuristic; no longer applies).
+  pkt.hub.est_breaths_per_min       = nBreath;
   uint32_t sinceMs = (lastBreathMs > 0) ? (now - lastBreathMs) : now;
   pkt.hub.seconds_since_last_breath = (uint16_t)constrain((int)(sinceMs / 1000), 0, 65535);
   pkt.hub.apnea_alert               = (pkt.hub.seconds_since_last_breath >= APNEA_ALERT_SEC) ? 1 : 0;
