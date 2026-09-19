@@ -527,8 +527,12 @@ void setup() {
   Bluefruit.Advertising.addService(neuroguardSvc);
   Bluefruit.Advertising.addName();
   Bluefruit.Advertising.restartOnDisconnect(true);
-  Bluefruit.Advertising.setInterval(32, 244);   // ×0.625 ms → 20–152 ms
-  Bluefruit.Advertising.setFastTimeout(30);
+  // Fast advertising for the first 60 s after (re)disconnect, then slow.
+  // Numbers are in 0.625 ms units.
+  //   fast: 32  → 20 ms   (rediscovery in <100 ms typical)
+  //   slow: 244 → 152 ms  (long-term background)
+  Bluefruit.Advertising.setInterval(32, 244);
+  Bluefruit.Advertising.setFastTimeout(60);     // stay in fast mode 60 s after disconnect
   Bluefruit.Advertising.start(0);               // 0 = advertise forever
   bleOk = true;
   Serial.println("[BLE] advertising as NG-Bracelet (Bluefruit)");
