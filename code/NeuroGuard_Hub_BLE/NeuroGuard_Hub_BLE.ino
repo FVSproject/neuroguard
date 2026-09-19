@@ -59,6 +59,14 @@ static BLEUUID NG_BRACELET_CHR_UUID("a1b2c3d5-9999-4a2b-9c1e-1a2b3c4d5e6f");
 // Hub's own service exposed to the browser (this device advertises + notifies)
 static BLEUUID NG_HUB_WEB_SVC_UUID ("b2c3d4e5-9999-4a2b-9c1e-1a2b3c4d5e6f");
 static BLEUUID NG_HUB_WEB_CHR_UUID ("b2c3d4e6-9999-4a2b-9c1e-1a2b3c4d5e6f");
+// Command characteristic — browser writes a 1-byte opcode to trigger actions
+// on the hub (e.g. drop cached bracelet MAC and restart discovery).
+static BLEUUID NG_HUB_CMD_CHR_UUID ("b2c3d4e7-9999-4a2b-9c1e-1a2b3c4d5e6f");
+
+// Command opcodes written by the web app.
+enum HubCmd : uint8_t {
+  HUB_CMD_RESCAN_BRACELET = 0x01,   // forget cached MAC + restart scan
+};
 
 // ============================================================================
 //  Wire structs — must stay byte-exact with webapp/src/lib/packet.ts
@@ -309,7 +317,11 @@ void bleCentralTick() {
 // ============================================================================
 BLEServer*         pBleServer  = nullptr;
 BLECharacteristic* pWebChr     = nullptr;
+BLECharacteristic* pCmdChr     = nullptr;
 bool               webSubscribed = false;
+
+// Forward declarations for handlers invoked by the command char.
+void handleRescanBraceletCmd();
 
 class NgWebServerCB : public BLEServerCallbacks {
   void onConnect(BLEServer* /*s*/) override {
@@ -319,6 +331,22 @@ class NgWebServerCB : public BLEServerCallbacks {
     Serial.println("[BLE web] browser disconnected — restarting advertising");
     webSubscribed = false;
     BLEDevice::startAdvertising();
+  }
+};
+
+class NgCmdChrCB : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* c) override {
+    std::string v = c->getValue();
+    if (v.empty()) return;
+    uint8_t op = (uint8_t)v[0];
+    Serial.print("[BLE web] cmd op=0x"); Serial.println(op, HEX);
+    switch (op) {
+      case HUB_CMD_RESCAN_BRACELET:
+        handleRescanBraceletCmd();
+        break;
+      default:
+        Serial.println("[BLE web] unknown cmd — ignored");
+    }
   }
 };
 
@@ -332,6 +360,15 @@ void startBleWebPeripheral() {
     BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
   );
   pWebChr->addDescriptor(new BLE2902());
+
+  // Command characteristic — browser writes a 1-byte opcode. WRITE_NR
+  // (write without response) keeps the round-trip fast for UI actions.
+  pCmdChr = pSvc->createCharacteristic(
+    NG_HUB_CMD_CHR_UUID,
+    BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
+  );
+  pCmdChr->setCallbacks(new NgCmdChrCB());
+
   pSvc->start();
 
   BLEAdvertising* pAdv = BLEDevice::getAdvertising();
@@ -341,6 +378,21 @@ void startBleWebPeripheral() {
   pAdv->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
   Serial.println("[BLE web] advertising as NG-Pacifier — browser can now connect");
+}
+
+// Drop the cached bracelet MAC and kill any in-flight connection so the next
+// central tick starts a fresh scan. Called from the CMD characteristic write.
+void handleRescanBraceletCmd() {
+  Serial.println("[BLE central] RESCAN command — clearing cache + reconnecting");
+  g_haveCachedMac = false;
+  if (pBleClient) {
+    pBleClient->disconnect();
+    // Don't delete here — the disconnect callback will flip bleConnected=false
+    // and the next tick will recreate the client via tryConnectBracelet().
+  }
+  if (pBleTarget) { delete pBleTarget; pBleTarget = nullptr; }
+  bleConnected = false;
+  bleScanning  = false;   // next tick starts a fresh scan
 }
 
 // ============================================================================
@@ -390,15 +442,51 @@ void updateSuckDetector(float pct, uint32_t now) {
     }
   }
 }
+// Adaptive breath detector: tracks a slow EMA of ambient pk-pk and fires
+// when the sample rises significantly above it. The old fixed-threshold
+// version stalled in rooms where ambient noise kept pk-pk above the rearm
+// threshold (BREATH_OFF_PKPK = 175 counts / 8 %) — the detector latched
+// into "high" state and never fired again after boot.
+//
+// The baseline decays FAST toward pk-pk when the signal is below baseline
+// (silence following a spike), and SLOW when above (so a loud sustained
+// breath doesn't drag the baseline up before we can fire on the next).
+static float breathBaseline = 0.0f;
+
 void updateBreathDetector(int pkpk, uint32_t now) {
+  if (breathBaseline == 0.0f) breathBaseline = (float)pkpk;
+
+  // Fire threshold: 300 counts above baseline (≈15 % pk-pk swing above
+  // ambient), floored at BREATH_ON_PKPK so quiet breaths in a silent room
+  // still register at the intended sensitivity.
+  int fireThresh  = max(BREATH_ON_PKPK, (int)(breathBaseline + 300.0f));
+  // Rearm threshold: within +100 counts of baseline (~5 % pk-pk). Doesn't
+  // require true silence — just a drop back toward ambient.
+  int rearmThresh = (int)(breathBaseline + 100.0f);
+
   if (!breathActive) {
-    if (pkpk >= BREATH_ON_PKPK && (now - lastBreathMs) > BREATH_REFRACT_MS) {
+    if (pkpk >= fireThresh && (now - lastBreathMs) > BREATH_REFRACT_MS) {
       breathActive = true;
       lastBreathMs = now;
       pushEvent(breathEvents, nBreath, now, (float)pkpk);
+      Serial.print("[BREATH] fire pkpk="); Serial.print(pkpk);
+      Serial.print(" base=");              Serial.print((int)breathBaseline);
+      Serial.print(" thresh=");            Serial.print(fireThresh);
+      Serial.print(" n=");                 Serial.println(nBreath);
     }
-  } else if (pkpk <= BREATH_OFF_PKPK) {
+  } else if (pkpk <= rearmThresh) {
     breathActive = false;
+  }
+
+  // Baseline update — fast down (0.10 weight on new sample when below),
+  // slow up (0.005 when above). Freezes while a breath is active so the
+  // spike itself doesn't corrupt the baseline.
+  if (!breathActive) {
+    if (pkpk < breathBaseline) {
+      breathBaseline = breathBaseline * 0.90f + (float)pkpk * 0.10f;
+    } else {
+      breathBaseline = breathBaseline * 0.995f + (float)pkpk * 0.005f;
+    }
   }
 }
 
