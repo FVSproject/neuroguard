@@ -8,6 +8,7 @@ import { createElement } from "react";
 import { getAlarmPrefs } from "@/lib/actions/alarm-prefs";
 import { appendLog } from "@/lib/actions/logs";
 import { evaluate } from "@/lib/thresholds";
+import { isMetricReady } from "@/lib/readiness";
 import { playAlarm, stopAlarm } from "@/lib/alarm";
 import { AlarmToast, type AlarmToastLevel } from "@/components/alarm/alarm-toast";
 import { useAlarmStore } from "@/stores/alarm-store";
@@ -83,8 +84,18 @@ export function useAlarmWatcher() {
 
     function onPacket(p: CombinedPacket | null) {
       if (!p) return;
+      // Snapshot the session start once per packet so every metric shares the
+      // same "now" — otherwise two metrics 100 ms apart could disagree on
+      // whether the warmup window has closed.
+      const sessionStart = useBleStore.getState().sessionStartMs;
+      const nowMs = Date.now();
+
       let highest: "ok" | "watch" | "alert" | "critical" | "stale" | "off" = "ok";
       for (const metric of METRICS) {
+        // Skip metrics that haven't accumulated enough data yet — a
+        // 60-second rolling breath count is meaningless at 12 s.
+        if (!isMetricReady(metric, sessionStart, nowMs)) continue;
+
         const cfg = thresholds[metric];
         const v = readMetric(p, metric);
         const state = evaluate(v, cfg);
@@ -125,9 +136,14 @@ export function useAlarmWatcher() {
             // Non-fatal — a network hiccup shouldn't kill the alarm pipeline
           });
         }
-        // Track the "worst" state so we know what sound to play.
-        const order = { off: 0, stale: 1, ok: 2, watch: 3, alert: 4, critical: 5 } as const;
-        if (order[state] > order[highest]) highest = state;
+        // Track the "worst" state so we know what sound to play. `warmingUp`
+        // never reaches this point (we `continue` above when a metric isn't
+        // ready) but the switch below defaults it to `ok` priority anyway to
+        // keep TypeScript honest about the union.
+        const order = {
+          warmingUp: 0, off: 0, stale: 1, ok: 2, watch: 3, alert: 4, critical: 5,
+        } as const;
+        if (state !== "warmingUp" && order[state] > order[highest]) highest = state;
       }
 
       // Audio escalation. Snoozed / silenced → no sound.

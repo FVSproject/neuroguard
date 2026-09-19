@@ -18,6 +18,15 @@ type State = {
   lastError: string | null;
   lastPacket: CombinedPacket | null;
   lastPacketMs: number;
+  /**
+   * Wall-clock ms when the CURRENT session started — either when the first
+   * packet arrived after connecting, or when the mock stream was turned on.
+   * `useMetricReady()` uses `Date.now() - sessionStartMs` as an "elapsed"
+   * clock so we know when a windowed metric (breath rate, suck rate, HRV,
+   * eCO₂ warmup, etc.) has enough data to be meaningful.
+   * Reset to 0 on disconnect so the next session starts a fresh warmup.
+   */
+  sessionStartMs: number;
 };
 
 type Actions = {
@@ -33,15 +42,27 @@ const initial: State = {
   lastError: null,
   lastPacket: null,
   lastPacketMs: 0,
+  sessionStartMs: 0,
 };
 
 export const useBleStore = create<State & Actions>()(
   subscribeWithSelector((set) => ({
     ...initial,
     setStatus: (status, deviceName) =>
-      set((s) => ({ status, deviceName: deviceName ?? s.deviceName })),
+      set((s) => ({
+        status,
+        deviceName: deviceName ?? s.deviceName,
+        // Reset warmup clock whenever the link drops.
+        sessionStartMs: status === "disconnected" ? 0 : s.sessionStartMs,
+      })),
     setError: (err) => set({ lastError: err }),
-    ingest: (packet) => set({ lastPacket: packet, lastPacketMs: Date.now() }),
+    ingest: (packet) =>
+      set((s) => ({
+        lastPacket: packet,
+        lastPacketMs: Date.now(),
+        // Latch on the first packet of a session.
+        sessionStartMs: s.sessionStartMs || Date.now(),
+      })),
     reset: () => set(initial),
   })),
 );

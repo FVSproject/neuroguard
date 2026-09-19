@@ -33,7 +33,7 @@ export function defaultThresholdsList(): ThresholdConfig[] {
 
 // -- Runtime state derivation ----------------------------------------------
 
-export type MetricState = "ok" | "watch" | "alert" | "critical" | "stale" | "off";
+export type MetricState = "ok" | "watch" | "alert" | "critical" | "stale" | "off" | "warmingUp";
 
 /**
  * Given the current value + configured thresholds, return which state the

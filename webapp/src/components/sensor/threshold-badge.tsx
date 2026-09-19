@@ -7,12 +7,13 @@ import type { MetricState } from "@/lib/thresholds";
 import { cn } from "@/lib/utils";
 
 const STATE_TONE: Record<MetricState, string> = {
-  ok:       "text-muted",
-  watch:    "text-warn",
-  alert:    "text-danger",
-  critical: "text-danger",
-  stale:    "text-muted",
-  off:      "text-muted",
+  ok:        "text-muted",
+  watch:     "text-warn",
+  alert:     "text-danger",
+  critical:  "text-danger",
+  stale:     "text-muted",
+  off:       "text-muted",
+  warmingUp: "text-brand",
 };
 
 /**

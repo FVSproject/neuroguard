@@ -143,6 +143,7 @@
     "stale": "No data",
     "off": "Sensor off",
     "warmingUp": "Warming up",
+    "warmingUpSec": "Warming up · {sec}s",
     "noFinger": "No contact"
   },
   "threshold": {

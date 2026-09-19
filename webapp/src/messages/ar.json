@@ -143,6 +143,7 @@
     "stale": "لا يوجد بيانات",
     "off": "المستشعر مطفأ",
     "warmingUp": "قيد الإحماء",
+    "warmingUpSec": "قيد الإحماء · {sec} ث",
     "noFinger": "لا تلامس"
   },
   "threshold": {

@@ -39,11 +39,12 @@ export function SensorCard({
   // Border colour follows the current state so the room glow doubles as an
   // ambient status indicator, without repainting the whole background.
   const borderTone =
-    state === "critical" ? "border-danger" :
-    state === "alert"    ? "border-danger/70" :
-    state === "watch"    ? "border-warn/70" :
-    state === "stale"    ? "border-offline/40" :
-                           "border-border";
+    state === "critical"  ? "border-danger" :
+    state === "alert"     ? "border-danger/70" :
+    state === "watch"     ? "border-warn/70" :
+    state === "warmingUp" ? "border-brand/40" :
+    state === "stale"     ? "border-offline/40" :
+                            "border-border";
 
   return (
     <motion.div

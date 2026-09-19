@@ -1,36 +1,39 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Check, TriangleAlert, OctagonAlert, Siren, WifiOff, CircleOff } from "lucide-react";
+import { Check, TriangleAlert, OctagonAlert, Siren, WifiOff, CircleOff, Timer } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { MetricState } from "@/lib/thresholds";
 
 const STATE_STYLE: Record<MetricState, string> = {
-  ok:       "bg-ok-soft text-ok-foreground text-ok border-ok/30",
-  watch:    "bg-warn-soft text-warn border-warn/30",
-  alert:    "bg-danger-soft text-danger border-danger/30",
-  critical: "bg-danger text-white border-danger",
-  stale:    "bg-offline-soft text-offline border-offline/30",
-  off:      "bg-offline-soft text-offline border-offline/30",
+  ok:        "bg-ok-soft text-ok-foreground text-ok border-ok/30",
+  watch:     "bg-warn-soft text-warn border-warn/30",
+  alert:     "bg-danger-soft text-danger border-danger/30",
+  critical:  "bg-danger text-white border-danger",
+  stale:     "bg-offline-soft text-offline border-offline/30",
+  off:       "bg-offline-soft text-offline border-offline/30",
+  warmingUp: "bg-brand-soft text-brand border-brand/30",
 };
 
 const STATE_ICON: Record<MetricState, React.ComponentType<{ className?: string }>> = {
-  ok:       Check,
-  watch:    TriangleAlert,
-  alert:    OctagonAlert,
-  critical: Siren,
-  stale:    WifiOff,
-  off:      CircleOff,
+  ok:        Check,
+  watch:     TriangleAlert,
+  alert:     OctagonAlert,
+  critical:  Siren,
+  stale:     WifiOff,
+  off:       CircleOff,
+  warmingUp: Timer,
 };
 
 const STATE_LABEL_KEY: Record<MetricState, string> = {
-  ok:       "ok",
-  watch:    "watch",
-  alert:    "alert",
-  critical: "critical",
-  stale:    "stale",
-  off:      "off",
+  ok:        "ok",
+  watch:     "watch",
+  alert:     "alert",
+  critical:  "critical",
+  stale:     "stale",
+  off:       "off",
+  warmingUp: "warmingUp",
 };
 
 export function StateChip({
