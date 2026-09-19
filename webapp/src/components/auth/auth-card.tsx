@@ -42,6 +42,11 @@ export function AuthCard({ mode }: { mode: Mode }) {
 
   const supabase = createClient();
 
+  // Only surface the Google button when we know it's configured on the Supabase
+  // side. Set `NEXT_PUBLIC_ENABLE_GOOGLE_AUTH=true` in Vercel once you've
+  // pasted a Google OAuth client id/secret into Supabase → Auth → Providers.
+  const googleEnabled = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === "true";
+
   async function onEmailPassword(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -127,23 +132,26 @@ export function AuthCard({ mode }: { mode: Mode }) {
             <CardTitle className="text-2xl">{label}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              onClick={onGoogle}
-              disabled={busy}
-            >
-              <GoogleLogo />
-              {mode === "sign-up" ? t("auth.continueWithGoogle") : t("auth.signInWithGoogle")}
-            </Button>
-
-            <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-2 text-[11px] uppercase tracking-wide text-muted">
-                {t("auth.or")}
-              </span>
-            </div>
+            {googleEnabled ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={onGoogle}
+                  disabled={busy}
+                >
+                  <GoogleLogo />
+                  {mode === "sign-up" ? t("auth.continueWithGoogle") : t("auth.signInWithGoogle")}
+                </Button>
+                <div className="relative">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-2 text-[11px] uppercase tracking-wide text-muted">
+                    {t("auth.or")}
+                  </span>
+                </div>
+              </>
+            ) : null}
 
             <form onSubmit={onEmailPassword} className="space-y-3">
               <div className="space-y-1.5">
