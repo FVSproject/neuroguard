@@ -131,8 +131,11 @@ const int MIC_PIN = D2;
 const float    R_DIV_OHM        = 47000.0f;
 const int      FSR_DEADBAND     = 20;
 const int      FSR_FULL_SCALE   = 3800;
-const float    SUCK_ON_PCT      = 15.0f;
-const float    SUCK_OFF_PCT     = 8.0f;
+// 8 % rising threshold catches gentle sucks; parents want "every press
+// counts". Kept in lockstep with SUCK_ON_PCT in the web app so the meter's
+// teal tick lines up with the trigger.
+const float    SUCK_ON_PCT      = 8.0f;    // rising threshold to register suck
+const float    SUCK_OFF_PCT     = 3.0f;    // hysteresis (~40 % of ON)
 const uint32_t BURST_GAP_MS     = 1500;
 
 const uint32_t MIC_WINDOW_MS      = 50;
