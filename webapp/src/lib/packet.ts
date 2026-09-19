@@ -271,6 +271,12 @@ export const NG_BRACELET_SERVICE_UUID = "a1b2c3d4-9999-4a2b-9c1e-1a2b3c4d5e6f";
 export const NG_BRACELET_CHR_UUID     = "a1b2c3d5-9999-4a2b-9c1e-1a2b3c4d5e6f";
 export const NG_HUB_WEB_SERVICE_UUID  = "b2c3d4e5-9999-4a2b-9c1e-1a2b3c4d5e6f";
 export const NG_HUB_WEB_CHR_UUID      = "b2c3d4e6-9999-4a2b-9c1e-1a2b3c4d5e6f";
+// Command characteristic — browser writes a 1-byte opcode.
+export const NG_HUB_CMD_CHR_UUID      = "b2c3d4e7-9999-4a2b-9c1e-1a2b3c4d5e6f";
+
+// Opcodes for the hub command channel — must match `enum HubCmd` in the
+// hub firmware.
+export const HUB_CMD_RESCAN_BRACELET = 0x01;
 
 // Kept as aliases for older callers that expected these names.
 export const NG_SERVICE_UUID = NG_BRACELET_SERVICE_UUID;

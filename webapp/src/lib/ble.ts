@@ -3,10 +3,28 @@
 import {
   NG_HUB_WEB_SERVICE_UUID,
   NG_HUB_WEB_CHR_UUID,
+  NG_HUB_CMD_CHR_UUID,
   parseCombinedBinary,
   parseCombinedJson,
   type CombinedPacket,
 } from "@/lib/packet";
+
+// Cached command characteristic — populated on connect, cleared on
+// disconnect. Kept module-scope so the UI can call `sendHubCommand()`
+// without threading the GATT handle through every component.
+let cmdChr: BluetoothRemoteGATTCharacteristic | null = null;
+
+/** Write a 1-byte opcode to the hub's command characteristic. */
+export async function sendHubCommand(op: number): Promise<void> {
+  if (!cmdChr) throw new Error("Hub not connected — connect first.");
+  const payload = Uint8Array.of(op & 0xff);
+  // WRITE_NR: fire-and-forget, no host round-trip.
+  if (cmdChr.writeValueWithoutResponse) {
+    await cmdChr.writeValueWithoutResponse(payload);
+  } else {
+    await cmdChr.writeValue(payload);
+  }
+}
 
 /**
  * Thin wrapper around the Web Bluetooth API for talking to the NeuroGuard hub.
@@ -54,6 +72,13 @@ export async function connectHub(cb: BleCallbacks): Promise<BluetoothDevice> {
   if (!server) throw new Error("Failed to connect to hub GATT server.");
   const service = await server.getPrimaryService(NG_HUB_WEB_SERVICE_UUID);
   const characteristic = await service.getCharacteristic(NG_HUB_WEB_CHR_UUID);
+  // Command characteristic is optional — older firmware doesn't have it.
+  // Swallow the NotFound so the primary data stream still works.
+  try {
+    cmdChr = await service.getCharacteristic(NG_HUB_CMD_CHR_UUID);
+  } catch {
+    cmdChr = null;
+  }
 
   const onValue = (ev: Event) => {
     try {
@@ -79,6 +104,7 @@ export async function connectHub(cb: BleCallbacks): Promise<BluetoothDevice> {
 
   device.addEventListener("gattserverdisconnected", () => {
     characteristic.removeEventListener("characteristicvaluechanged", onValue);
+    cmdChr = null;
     cb.onStatus("disconnected", device.name ?? undefined);
   });
 
@@ -93,4 +119,10 @@ export function disconnectHub(device: BluetoothDevice): void {
   } catch {
     // ignore — best-effort teardown
   }
+  cmdChr = null;
+}
+
+/** True when a command channel is available on the current connection. */
+export function hasCmdChannel(): boolean {
+  return cmdChr !== null;
 }
