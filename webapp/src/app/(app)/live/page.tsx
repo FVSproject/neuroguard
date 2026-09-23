@@ -53,11 +53,13 @@ export default function LivePage() {
 
   const thresholds = useThresholds(currentId);
   const history = useMetricHistory(METRICS);
-  // Client-side breath counter (rising-edge crossing of 17 %). Overrides
+  // Client-side breath counter (rising-edge crossing of 27 %). Overrides
   // the firmware's respEventsPerMin / estBreathsPerMin so the UI stays
   // consistent with the level bar even when the hub firmware isn't the
-  // latest, or its ambient-noise handling stalls.
-  const clientBreathEvents = useClientBreathCount();
+  // latest, or its ambient-noise handling stalls. `total` is cumulative
+  // (monotonic, never decrements); `window60s` is the rolling 60 s count
+  // shown as a secondary hint in the card note.
+  const { total: clientBreathTotal, window60s: clientBreathWindow } = useClientBreathCount();
 
   // 1 Hz tick so the "Warming up · N s" countdown ticks down even when no
   // packet has arrived. Cheap — one setState per second.
@@ -77,12 +79,12 @@ export default function LivePage() {
     const base = Object.fromEntries(METRICS.map((m) => [m, readMetric(packet, m)])) as Record<
       MetricId, number | null
     >;
-    // Override the firmware's breath rate with the client-side counter so
-    // the main number on the Breathing Rate card matches the "N ev" chip
-    // and the level-bar tick the user actually sees.
-    base.breathRate = clientBreathEvents;
+    // Override the firmware's breath rate with the client-side cumulative
+    // counter so the main number on the Breathing card matches the "N ev"
+    // chip and the level-bar tick the user actually sees.
+    base.breathRate = clientBreathTotal;
     return base;
-  }, [packet, clientBreathEvents]);
+  }, [packet, clientBreathTotal]);
 
   /**
    * Compute the display state for a metric. Priority order:
@@ -194,7 +196,13 @@ export default function LivePage() {
             // cards. Lets the parent watch the amplitude cross the firmware
             // trigger tick before trusting the aggregated rate.
             const belowValue =
-              metric === "breathRate" ? <MicLevel pkpk={packet?.hub.micPkpkNow} eventsPerMin={clientBreathEvents} /> :
+              metric === "breathRate" ? (
+                <MicLevel
+                  pkpk={packet?.hub.micPkpkNow}
+                  eventsPerMin={clientBreathTotal}
+                  note={t("sensor.breathNote", { window: clientBreathWindow })}
+                />
+              ) :
               metric === "suckRate"   ? <FsrLevel pct={packet?.hub.fsrPctNow} /> :
               undefined;
             return (
