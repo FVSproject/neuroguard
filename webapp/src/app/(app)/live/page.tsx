@@ -19,6 +19,7 @@ import { useUiStore } from "@/stores/ui-store";
 import { useBle } from "@/hooks/use-ble";
 import { useThresholds } from "@/hooks/use-thresholds";
 import { useMetricHistory, readMetric } from "@/hooks/use-history";
+import { useClientBreathCount } from "@/hooks/use-client-breath-count";
 import { evaluate, type MetricState } from "@/lib/thresholds";
 import { isMetricReady, secondsUntilReady } from "@/lib/readiness";
 import type { MetricId } from "@/lib/types";
@@ -52,6 +53,11 @@ export default function LivePage() {
 
   const thresholds = useThresholds(currentId);
   const history = useMetricHistory(METRICS);
+  // Client-side breath counter (rising-edge crossing of 17 %). Overrides
+  // the firmware's respEventsPerMin / estBreathsPerMin so the UI stays
+  // consistent with the level bar even when the hub firmware isn't the
+  // latest, or its ambient-noise handling stalls.
+  const clientBreathEvents = useClientBreathCount();
 
   // 1 Hz tick so the "Warming up · N s" countdown ticks down even when no
   // packet has arrived. Cheap — one setState per second.
@@ -68,10 +74,15 @@ export default function LivePage() {
   // Fresh values per metric for the current render
   const values = useMemo(() => {
     if (!packet) return {} as Record<MetricId, number | null>;
-    return Object.fromEntries(METRICS.map((m) => [m, readMetric(packet, m)])) as Record<
+    const base = Object.fromEntries(METRICS.map((m) => [m, readMetric(packet, m)])) as Record<
       MetricId, number | null
     >;
-  }, [packet]);
+    // Override the firmware's breath rate with the client-side counter so
+    // the main number on the Breathing Rate card matches the "N ev" chip
+    // and the level-bar tick the user actually sees.
+    base.breathRate = clientBreathEvents;
+    return base;
+  }, [packet, clientBreathEvents]);
 
   /**
    * Compute the display state for a metric. Priority order:
@@ -183,7 +194,7 @@ export default function LivePage() {
             // cards. Lets the parent watch the amplitude cross the firmware
             // trigger tick before trusting the aggregated rate.
             const belowValue =
-              metric === "breathRate" ? <MicLevel pkpk={packet?.hub.micPkpkNow} eventsPerMin={packet?.hub.respEventsPerMin} /> :
+              metric === "breathRate" ? <MicLevel pkpk={packet?.hub.micPkpkNow} eventsPerMin={clientBreathEvents} /> :
               metric === "suckRate"   ? <FsrLevel pct={packet?.hub.fsrPctNow} /> :
               undefined;
             return (
