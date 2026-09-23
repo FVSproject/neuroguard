@@ -62,7 +62,6 @@ export default function LivePage() {
   const {
     total: clientBreathTotal,
     window60s: clientBreathWindow,
-    smoothPct: micSmoothPct,
   } = useClientBreathCount();
 
   // 1 Hz tick so the "Warming up · N s" countdown ticks down even when no
@@ -203,7 +202,6 @@ export default function LivePage() {
               metric === "breathRate" ? (
                 <MicLevel
                   pkpk={packet?.hub.micPkpkNow}
-                  smoothPct={micSmoothPct}
                   eventsPerMin={clientBreathTotal}
                   note={t("sensor.breathNote", { window: clientBreathWindow })}
                 />
