@@ -19,7 +19,7 @@ import { useBabyStore } from "@/stores/baby-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useBle } from "@/hooks/use-ble";
 import { useThresholds } from "@/hooks/use-thresholds";
-import { useMetricHistory, readMetric } from "@/hooks/use-history";
+import { useMetricHistory, readMetric, BRACELET_STALE_SEC } from "@/hooks/use-history";
 import { useClientBreathCount } from "@/hooks/use-client-breath-count";
 import { evaluate, type MetricState } from "@/lib/thresholds";
 import { isMetricReady, secondsUntilReady } from "@/lib/readiness";
@@ -31,7 +31,6 @@ const METRICS = ["hr", "spo2", "rmssd", "suckRate", "breathRate", "apneaSec", "s
 // (or its last packet is more than a few seconds stale), we want the cards
 // to say "Sensor off" or "Stale — 12 s" instead of a stale numeric reading.
 const BRACELET_METRICS = new Set<MetricId>(["hr", "spo2", "rmssd", "sdnn", "stillnessSec"]);
-const BRACELET_STALE_SEC = 5;
 
 function fmt(v: number | null | undefined, digits = 0): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";

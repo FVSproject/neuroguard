@@ -125,7 +125,7 @@ struct __attribute__((packed)) CombinedWire {
   HubWire      hub;                  //  0
   uint8_t      bracelet_present;     // 32
   uint16_t     bracelet_age_s;       // 33
-  uint8_t      _reserved;            // 35 — keeps BraceletWire on a byte boundary
+  uint8_t      bracelet_drops;       // 35 — unexpected link drops since hub boot (wraps at 255)
   BraceletWire bracelet;             // 36
 };                                   // 77 bytes total
 static_assert(sizeof(CombinedWire) == 77, "CombinedWire drifted");
@@ -188,128 +188,188 @@ uint32_t lastEnvMs = 0, lastPacketMs = 0;
 
 // ============================================================================
 //  BLE — central role (subscribes to the bracelet)
+//
+//  The whole bracelet link runs in its own FreeRTOS task so connecting and
+//  GATT discovery never stall mic/FSR sampling or the 1 Hz browser packet.
+//  Rules that keep it stable on the ESP32-S3's NimBLE stack:
+//
+//   1. Scan-gated connect. NimBLE's BLEClient::connect() ignores its timeout
+//      argument and blocks up to 31 s when the peer isn't advertising, so we
+//      only connect to an address heard advertising moments ago.
+//   2. Robust link params. NimBLE defaults to a 2.56 s supervision timeout —
+//      a foot under a blanket fades longer than that. We set 6 s right after
+//      connecting and reject peer requests (NimBLE would answer them with its
+//      own 2.56 s defaults).
+//   3. Data watchdog. Link up but no packet for 6 s = zombie link; drop it
+//      and reconnect instead of waiting forever.
 // ============================================================================
-BraceletWire lastBracelet{};
-volatile uint32_t lastBraceletMs = 0;
-bool bleConnected = false;
-bool bleScanning  = false;
-BLEClient*                pBleClient  = nullptr;
-BLERemoteCharacteristic*  pBleChr     = nullptr;
-BLEAdvertisedDevice*      pBleTarget  = nullptr;
+const uint16_t LINK_ITVL_MIN     = 40;     // ×1.25 ms = 50 ms
+const uint16_t LINK_ITVL_MAX     = 80;     // ×1.25 ms = 100 ms
+const uint16_t LINK_LATENCY      = 0;
+const uint16_t LINK_SUP_TIMEOUT  = 600;    // ×10 ms = 6 s
+const uint32_t SCAN_BURST_S      = 4;
+const uint32_t DATA_WATCHDOG_MS  = 6000;
+const uint32_t BACKOFF_MIN_MS    = 250;
+const uint32_t BACKOFF_MAX_MS    = 8000;
+// Keep sending the last bracelet values (the web flags them stale by age)
+// for this long after the last notify, so a short reconnect reads as
+// "3 s ago" instead of every bracelet card flipping to "Sensor off".
+// Matches the web connection chip's 15 s offline cutoff.
+const uint32_t BRACELET_SHOW_MS  = 15000;
 
-// Cache the bracelet's MAC after the FIRST successful discovery. Subsequent
-// reconnects skip scanning entirely and use a directed connect straight to
-// this address — typical reconnect time drops from 5–15 s to <1 s.
-static BLEAddress g_cachedBraceletMac((uint8_t*)"\x00\x00\x00\x00\x00\x00");
-static bool       g_haveCachedMac    = false;
-static uint8_t    g_cachedAddrType   = BLE_ADDR_PUBLIC;
-
-// Bluedroid's default connect timeout is portMAX_DELAY, so a stale MAC would
-// stall the main loop for tens of seconds. Cap directed connect to 2 s — if
-// the bracelet isn't reachable, we fall back to a scan on the next tick.
-static const uint32_t DIRECTED_CONNECT_TIMEOUT_MS = 2000;
+static SemaphoreHandle_t  g_sightSem     = nullptr;
+static portMUX_TYPE       g_mux          = portMUX_INITIALIZER_UNLOCKED;
+static BLEAddress         g_sightAddr;              // guarded by g_mux
+static uint8_t            g_sightType    = 0;       // guarded by g_mux
+static BraceletWire       g_bracelet{};             // guarded by g_mux
+static volatile uint32_t  g_braceletRxMs = 0;       // millis() of last good notify
+static volatile uint8_t   g_linkDrops    = 0;       // unexpected drops this boot
+static volatile bool      g_rescanReq    = false;
+static BLEClient*         g_client       = nullptr;
 
 static void braceletNotifyCB(BLERemoteCharacteristic* /*c*/, uint8_t* data, size_t len, bool /*isNotify*/) {
-  if (len == sizeof(BraceletWire)) {
-    memcpy(&lastBracelet, data, len);
-    lastBraceletMs = millis();
+  if (len != sizeof(BraceletWire)) {
+    static bool warned = false;
+    if (!warned) {
+      warned = true;
+      Serial.printf("[bracelet] notify len=%u, expected %u (MTU too small?)\n",
+                    (unsigned)len, (unsigned)sizeof(BraceletWire));
+    }
+    return;
   }
+  portENTER_CRITICAL(&g_mux);
+  memcpy(&g_bracelet, data, sizeof(BraceletWire));
+  portEXIT_CRITICAL(&g_mux);
+  g_braceletRxMs = millis();
 }
 
+// Runs in the NimBLE host task: only hand the address to the link task.
 class NgScanCB : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice adv) override {
-    if (adv.haveServiceUUID() && adv.isAdvertisingService(NG_BRACELET_SVC_UUID)) {
-      Serial.print("[BLE central] MATCH  "); Serial.println(adv.getAddress().toString().c_str());
-      BLEDevice::getScan()->stop();
-      if (pBleTarget) delete pBleTarget;
-      pBleTarget = new BLEAdvertisedDevice(adv);
-      bleScanning = false;
-    }
+    if (!adv.haveServiceUUID() || !adv.isAdvertisingService(NG_BRACELET_SVC_UUID)) return;
+    BLEAddress addr = adv.getAddress();
+    uint8_t    type = adv.getAddressType();
+    portENTER_CRITICAL(&g_mux);
+    g_sightAddr = addr;
+    g_sightType = type;
+    portEXIT_CRITICAL(&g_mux);
+    xSemaphoreGive(g_sightSem);
   }
 };
 
 class NgClientCB : public BLEClientCallbacks {
-  void onConnect(BLEClient* /*c*/) override { Serial.println("[BLE central] connected"); }
-  void onDisconnect(BLEClient* /*c*/) override {
-    bleConnected = false;
-    Serial.println("[BLE central] disconnected");
+  bool onConnParamsUpdateRequest(BLEClient* /*c*/, const ble_gap_upd_params* /*p*/) override {
+    return false;
   }
 };
 
-// Finish the connect: discover service, subscribe to notifications. Shared by
-// both the "discovered via scan" path and the "directed reconnect via cached
-// MAC" path.
-bool finishConnect() {
-  auto svc = pBleClient->getService(NG_BRACELET_SVC_UUID);
-  if (!svc) { Serial.println("[BLE central] service NOT FOUND"); pBleClient->disconnect(); return false; }
-  pBleChr = svc->getCharacteristic(NG_BRACELET_CHR_UUID);
-  if (!pBleChr) { Serial.println("[BLE central] char NOT FOUND");   pBleClient->disconnect(); return false; }
-  if (pBleChr->canNotify()) pBleChr->registerForNotify(braceletNotifyCB);
-  bleConnected = true;
-  Serial.println("[BLE central] subscribed to bracelet");
+static NgScanCB   g_scanCB;
+static NgClientCB g_clientCB;
+
+// Sleeps in small steps so a "Pair bracelet" press from the web app cuts
+// a long backoff short.
+static void sleepUnlessRescan(uint32_t ms) {
+  for (uint32_t t = 0; t < ms && !g_rescanReq; t += 100) vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+static void waitDisconnected() {
+  uint32_t t0 = millis();
+  while (g_client->isConnected() && millis() - t0 < LINK_SUP_TIMEOUT * 10UL + 1000) {
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
+}
+
+// One scan burst. Returns as soon as a bracelet advertises. 50 % duty
+// (100 ms interval / 50 ms window) leaves the radio free half the time for
+// the browser link; the bracelet advertises every 20 ms right after a drop,
+// so a 50 ms window still catches it almost immediately.
+static bool scanForBracelet(BLEAddress& addr, uint8_t& type) {
+  BLEScan* s = BLEDevice::getScan();
+  while (xSemaphoreTake(g_sightSem, 0) == pdTRUE) {}   // drop stale sightings
+  s->clearResults();
+  s->setActiveScan(true);
+  s->setInterval(100);
+  s->setWindow(50);
+  if (!s->start(SCAN_BURST_S, nullptr, false)) return false;
+  bool found = xSemaphoreTake(g_sightSem, pdMS_TO_TICKS(SCAN_BURST_S * 1000 + 250)) == pdTRUE;
+  if (s->isScanning()) s->stop();
+  if (!found) return false;
+  portENTER_CRITICAL(&g_mux);
+  addr = g_sightAddr;
+  type = g_sightType;
+  portEXIT_CRITICAL(&g_mux);
   return true;
 }
 
-bool tryConnectBracelet() {
-  if (!pBleTarget) return false;
-  if (pBleClient) { pBleClient->disconnect(); delete pBleClient; pBleClient = nullptr; }
-
-  pBleClient = BLEDevice::createClient();
-  pBleClient->setClientCallbacks(new NgClientCB());
-  if (!pBleClient->connect(pBleTarget)) { Serial.println("[BLE central] connect() failed"); return false; }
-
-  // Cache the MAC + address type so subsequent reconnects skip scanning.
-  g_cachedBraceletMac = pBleTarget->getAddress();
-  g_cachedAddrType    = pBleTarget->getAddressType();
-  g_haveCachedMac     = true;
-  Serial.print("[BLE central] cached bracelet MAC: ");
-  Serial.println(g_cachedBraceletMac.toString().c_str());
-
-  return finishConnect();
-}
-
-// Directed reconnect: use the cached MAC to connect straight to the bracelet
-// without scanning first. Bluedroid's scan discovery is slow (5–15 s in
-// practice), so bypassing it collapses reconnect to <1 s in the common case.
-bool tryDirectedReconnect() {
-  if (!g_haveCachedMac) return false;
-  if (pBleClient) { pBleClient->disconnect(); delete pBleClient; pBleClient = nullptr; }
-
-  Serial.print("[BLE central] directed reconnect to ");
-  Serial.println(g_cachedBraceletMac.toString().c_str());
-  pBleClient = BLEDevice::createClient();
-  pBleClient->setClientCallbacks(new NgClientCB());
-  if (!pBleClient->connect(g_cachedBraceletMac, g_cachedAddrType, DIRECTED_CONNECT_TIMEOUT_MS)) {
-    Serial.println("[BLE central] directed connect() timed out — falling back to scan");
+static bool connectBracelet(BLEAddress addr, uint8_t type) {
+  Serial.printf("[bracelet] connecting to %s\n", addr.toString().c_str());
+  if (!g_client->connect(addr, type)) {
+    Serial.println("[bracelet] connect failed");
     return false;
   }
-  return finishConnect();
+  // The client object is reused across connections, so force a fresh GATT
+  // discovery — getService() alone would return the previous link's cache.
+  g_client->getServices();
+  BLERemoteService*        svc = g_client->getService(NG_BRACELET_SVC_UUID);
+  BLERemoteCharacteristic* chr = svc ? svc->getCharacteristic(NG_BRACELET_CHR_UUID) : nullptr;
+  if (!chr || !chr->canNotify()) {
+    Serial.println("[bracelet] service/characteristic missing, dropping link");
+    g_client->disconnect();
+    return false;
+  }
+  chr->registerForNotify(braceletNotifyCB);
+  if (!g_client->updateConnParams(LINK_ITVL_MIN, LINK_ITVL_MAX, LINK_LATENCY, LINK_SUP_TIMEOUT)) {
+    Serial.println("[bracelet] conn-param update rejected, keeping defaults");
+  }
+  Serial.println("[bracelet] linked (50-100 ms interval, 6 s supervision timeout)");
+  return true;
 }
 
-void bleCentralTick() {
-  // 1) A previous scan found the bracelet — connect using that discovery.
-  if (pBleTarget && !bleConnected) {
-    if (tryConnectBracelet()) { delete pBleTarget; pBleTarget = nullptr; }
-    else                      { delete pBleTarget; pBleTarget = nullptr; bleScanning = false; }
-    return;
-  }
-  // 2) Not connected, not scanning. If we have a cached MAC (i.e. this is a
-  //    reconnect after a previously successful pairing), try directed connect
-  //    first — much faster than re-scanning.
-  if (!bleConnected && !bleScanning && g_haveCachedMac) {
-    if (tryDirectedReconnect()) return;
-    // Directed connect failed — fall through and start a fresh scan.
-  }
-  // 3) Fallback / cold-boot: active scan at ~100 % duty for lowest discovery
-  //    latency on Bluedroid.
-  if (!bleConnected && !bleScanning) {
-    BLEScan* s = BLEDevice::getScan();
-    s->setActiveScan(true);
-    s->setInterval(96);     // 60 ms
-    s->setWindow(96);       // 60 ms → 100 % duty (scan continuously)
-    s->start(0, nullptr, false);
-    bleScanning = true;
-    Serial.println("[BLE central] scanning for NG-Bracelet…");
+static void braceletLinkTask(void* /*arg*/) {
+  uint32_t backoff = BACKOFF_MIN_MS;
+  for (;;) {
+    if (g_rescanReq) { g_rescanReq = false; backoff = BACKOFF_MIN_MS; }
+
+    BLEAddress addr;
+    uint8_t    type = 0;
+    if (!scanForBracelet(addr, type)) {
+      sleepUnlessRescan(backoff);
+      backoff = min(backoff * 2, BACKOFF_MAX_MS);
+      continue;
+    }
+    if (!connectBracelet(addr, type)) {
+      waitDisconnected();
+      sleepUnlessRescan(backoff);
+      backoff = min(backoff * 2, BACKOFF_MAX_MS);
+      continue;
+    }
+
+    backoff = BACKOFF_MIN_MS;
+    uint32_t linkUpMs   = millis();
+    bool     unexpected = true;
+    for (;;) {
+      vTaskDelay(pdMS_TO_TICKS(250));
+      if (!g_client->isConnected()) {
+        Serial.println("[bracelet] link lost");
+        break;
+      }
+      if (g_rescanReq) {
+        Serial.println("[bracelet] rescan requested, dropping link");
+        unexpected = false;
+        g_client->disconnect();
+        break;
+      }
+      uint32_t lastRx = g_braceletRxMs;
+      uint32_t ref    = ((int32_t)(lastRx - linkUpMs) > 0) ? lastRx : linkUpMs;
+      if ((int32_t)(millis() - ref) > (int32_t)DATA_WATCHDOG_MS) {
+        Serial.println("[bracelet] link up but silent for 6 s, forcing reconnect");
+        g_client->disconnect();
+        break;
+      }
+    }
+    if (unexpected) g_linkDrops = g_linkDrops + 1;   // single writer (this task)
+    waitDisconnected();
+    sleepUnlessRescan(BACKOFF_MIN_MS);
   }
 }
 
@@ -337,8 +397,8 @@ class NgWebServerCB : public BLEServerCallbacks {
 
 class NgCmdChrCB : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* c) override {
-    std::string v = c->getValue();
-    if (v.empty()) return;
+    String v = c->getValue();
+    if (v.length() == 0) return;
     uint8_t op = (uint8_t)v[0];
     Serial.print("[BLE web] cmd op=0x"); Serial.println(op, HEX);
     switch (op) {
@@ -381,19 +441,12 @@ void startBleWebPeripheral() {
   Serial.println("[BLE web] advertising as NG-Pacifier — browser can now connect");
 }
 
-// Drop the cached bracelet MAC and kill any in-flight connection so the next
-// central tick starts a fresh scan. Called from the CMD characteristic write.
+// Called from the CMD characteristic write (NimBLE host task). The link
+// task owns the BLE client, so just flag it: it drops the current link (if
+// any), skips its backoff and rescans immediately.
 void handleRescanBraceletCmd() {
-  Serial.println("[BLE central] RESCAN command — clearing cache + reconnecting");
-  g_haveCachedMac = false;
-  if (pBleClient) {
-    pBleClient->disconnect();
-    // Don't delete here — the disconnect callback will flip bleConnected=false
-    // and the next tick will recreate the client via tryConnectBracelet().
-  }
-  if (pBleTarget) { delete pBleTarget; pBleTarget = nullptr; }
-  bleConnected = false;
-  bleScanning  = false;   // next tick starts a fresh scan
+  Serial.println("[bracelet] RESCAN command from web app");
+  g_rescanReq = true;
 }
 
 // ============================================================================
@@ -573,11 +626,22 @@ void buildAndPushCombined(uint32_t now, float fsrPct, int micPkPk) {
   pkt.hub.tvoc_ppb                  = lastTVOC;
   pkt.hub.aqi                       = lastAQI;
 
-  uint32_t bAgeS = (lastBraceletMs > 0) ? ((now - lastBraceletMs) / 1000) : 999;
-  bool bLinked  = bleConnected && (lastBraceletMs > 0) && (bAgeS < 5);
-  pkt.bracelet_present = bLinked ? 1 : 0;
-  pkt.bracelet_age_s   = (uint16_t)min<uint32_t>(bAgeS, 65535);
-  if (bLinked) memcpy(&pkt.bracelet, &lastBracelet, sizeof(BraceletWire));
+  // Bracelet age uses a FRESH millis() and signed math. `now` was captured
+  // before the 50–140 ms of sensor reads in loop(); a notify landing in that
+  // gap made `now - rx` wrap to ~4e9 and reported a healthy bracelet as
+  // offline — in runs, because the two 1 Hz clocks drift slowly.
+  uint32_t rx    = g_braceletRxMs;
+  int32_t  ageMs = rx ? (int32_t)(millis() - rx) : INT32_MAX;
+  if (ageMs < 0) ageMs = 0;
+  bool showBracelet = rx && ageMs < (int32_t)BRACELET_SHOW_MS;
+  pkt.bracelet_present = showBracelet ? 1 : 0;
+  pkt.bracelet_age_s   = rx ? (uint16_t)min<int32_t>(ageMs / 1000, 65535) : 999;
+  pkt.bracelet_drops   = g_linkDrops;
+  if (showBracelet) {
+    portENTER_CRITICAL(&g_mux);
+    memcpy(&pkt.bracelet, &g_bracelet, sizeof(BraceletWire));
+    portEXIT_CRITICAL(&g_mux);
+  }
 
   if (pWebChr) {
     pWebChr->setValue((uint8_t*)&pkt, sizeof(pkt));
@@ -625,9 +689,13 @@ void setup() {
   // Peripheral side FIRST so `startAdvertising()` is registered before the
   // scanner begins (matters on some Bluedroid builds).
   startBleWebPeripheral();
-  // Central-side scan callback
-  BLEScan* s = BLEDevice::getScan();
-  s->setAdvertisedDeviceCallbacks(new NgScanCB(), false);
+  // Central side: one reusable client, driven by its own task on core 0
+  // (Arduino's loop() runs on core 1).
+  g_sightSem = xSemaphoreCreateBinary();
+  BLEDevice::getScan()->setAdvertisedDeviceCallbacks(&g_scanCB, false);
+  g_client = BLEDevice::createClient();
+  g_client->setClientCallbacks(&g_clientCB);
+  xTaskCreatePinnedToCore(braceletLinkTask, "ngLink", 8192, nullptr, 1, nullptr, 0);
 
   Serial.println("BLE up. Central role scans for NG-Bracelet; peripheral role advertises NG-Pacifier.");
   Serial.println("Streaming CombinedWire packets every 1 s over the web characteristic.");
@@ -638,8 +706,6 @@ void setup() {
 // ============================================================================
 void loop() {
   uint32_t now = millis();
-
-  bleCentralTick();
 
   int rawFsr    = readFsrAveraged(8);
   float fsrPct  = rawToFsrPct(rawFsr);

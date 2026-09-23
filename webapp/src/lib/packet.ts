@@ -99,9 +99,10 @@ export type Hub = {
 export type CombinedPacket = {
   tsMs: number;
   hub: Hub;
-  bracelet: Bracelet | null;    // null when the hub isn't linked to the bracelet
+  bracelet: Bracelet | null;    // null when the hub has no recent bracelet data
   braceletLinked: boolean;
   braceletAgeSec: number;
+  braceletDrops: number;        // unexpected hub↔bracelet link drops since hub boot
 };
 
 /**
@@ -251,6 +252,7 @@ export function parseCombined(text: string): CombinedPacket {
     bracelet,
     braceletLinked: j.bracelet.linked,
     braceletAgeSec: j.bracelet.age_s,
+    braceletDrops: 0,
   };
 }
 
@@ -311,7 +313,7 @@ export const NG_WEB_CHR_UUID = NG_HUB_WEB_CHR_UUID;
  *     HubWire      hub;                               //   0
  *     uint8_t      bracelet_present;                  //  32
  *     uint16_t     bracelet_age_s;                    //  33
- *     uint8_t      _reserved;                         //  35 (padding to keep BraceletWire aligned)
+ *     uint8_t      bracelet_drops;                    //  35 (link drops since hub boot)
  *     BraceletWire bracelet;                          //  36
  *   };                                                // → 77 bytes
  */
@@ -358,6 +360,7 @@ export function parseCombinedBinary(buf: ArrayBuffer): CombinedPacket {
 
   const braceletPresent  = v.getUint8(32) !== 0;
   const braceletAgeSec   = v.getUint16(33, LE);
+  const braceletDrops    = v.getUint8(35);
   const braceletBytes    = buf.slice(36);
   const bracelet = braceletPresent ? parseBracelet(braceletBytes) : null;
 
@@ -367,6 +370,7 @@ export function parseCombinedBinary(buf: ArrayBuffer): CombinedPacket {
     bracelet,
     braceletLinked: braceletPresent,
     braceletAgeSec,
+    braceletDrops,
   };
 }
 

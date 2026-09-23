@@ -47,6 +47,7 @@ export function generateMockPacket(step: number): CombinedPacket {
     },
     braceletLinked: true,
     braceletAgeSec: 1,
+    braceletDrops: 0,
     bracelet: {
       tsMs: now,
       fingerPresent: true,

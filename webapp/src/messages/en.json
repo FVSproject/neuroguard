@@ -71,7 +71,8 @@
     "linked": "Bracelet linked",
     "stale": "Bracelet · {sec} s ago",
     "offline": "Bracelet offline",
-    "rescan": "Pair bracelet"
+    "rescan": "Pair bracelet",
+    "drops": "Bracelet link drops since the hub started: {count}"
   },
   "baby": {
     "singular": "Baby",
