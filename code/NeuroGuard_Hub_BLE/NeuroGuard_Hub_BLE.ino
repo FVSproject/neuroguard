@@ -139,11 +139,14 @@ const int MIC_PIN = D2;
 const float    R_DIV_OHM        = 47000.0f;
 const int      FSR_DEADBAND     = 20;
 const int      FSR_FULL_SCALE   = 3800;
-// 8 % rising threshold catches gentle sucks; parents want "every press
-// counts". Kept in lockstep with SUCK_ON_PCT in the web app so the meter's
-// teal tick lines up with the trigger.
-const float    SUCK_ON_PCT      = 8.0f;    // rising threshold to register suck
-const float    SUCK_OFF_PCT     = 3.0f;    // hysteresis (~40 % of ON)
+// A press counts once the FSR rises past 25 % and is recorded when it falls
+// back below 15 %. The release point sits well above the resting level on
+// purpose: a 3 % release never fired when the FSR settled at 4–7 % after a
+// press, so the detector stuck "active" and stopped counting. Keep
+// SUCK_ON_PCT in lockstep with the tick in webapp/src/components/sensor/
+// fsr-level.tsx.
+const float    SUCK_ON_PCT      = 25.0f;   // rising threshold to register suck
+const float    SUCK_OFF_PCT     = 15.0f;   // release; 10-point gap stops double counts
 const uint32_t BURST_GAP_MS     = 1500;
 
 const uint32_t MIC_WINDOW_MS      = 50;
