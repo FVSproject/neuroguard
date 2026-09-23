@@ -11,15 +11,16 @@ import { cn } from "@/lib/utils";
  * seeing sound (blow on the pacifier → bar jumps).
  *
  *   0    silence
- *   17 % raw pk-pk crosses the 350-count "breath event" firmware threshold
+ *   27 % raw pk-pk crosses the client-side "breath event" trigger
  *  100 % pk-pk = 2048 (half-rail swing — a loud shout / clap / crying)
  *
  * When we're over the breath threshold the bar turns brand-teal; below it
  * stays muted grey, so the user can watch the threshold get crossed in real
- * time. Keep BREATH_ON_PCT in lockstep with `BREATH_ON_PKPK` in the hub
- * firmware — currently 350 counts.
+ * time. Keep BREATH_ON_PCT in lockstep with `BREATH_THRESHOLD_PCT` in
+ * `use-client-breath-count.ts` — the browser is the source of truth for
+ * this threshold; firmware doesn't participate in the count anymore.
  */
-const BREATH_ON_PCT = 17;
+const BREATH_ON_PCT = 27;
 
 export function MicLevel({
   pkpk,

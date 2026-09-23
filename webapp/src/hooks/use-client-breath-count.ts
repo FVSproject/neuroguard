@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useBleStore } from "@/stores/ble-store";
 
-const BREATH_THRESHOLD_PCT = 17;
+const BREATH_THRESHOLD_PCT = 27;
 const WINDOW_MS            = 60_000;
 
 // Match MicLevel: raw ADC pk-pk → % of 12-bit half-swing (2048).
@@ -16,7 +16,7 @@ function pkpkToPct(pkpk: number | undefined): number {
 /**
  * Client-side breath counter driven purely from the mic_pkpk_now field
  * on every packet. Fires exactly one event per upward crossing of the
- * 17 % threshold — the same tick MicLevel draws — so the "N ev" chip
+ * 27 % threshold — the same tick MicLevel draws — so the "N ev" chip
  * in the UI stays consistent with what the level bar visibly does.
  *
  * We keep this in the web app on purpose: the firmware detector has
