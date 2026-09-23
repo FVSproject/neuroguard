@@ -60,7 +60,11 @@ export default function LivePage() {
   // latest, or its ambient-noise handling stalls. `total` is cumulative
   // (monotonic, never decrements); `window60s` is the rolling 60 s count
   // shown as a secondary hint in the card note.
-  const { total: clientBreathTotal, window60s: clientBreathWindow } = useClientBreathCount();
+  const {
+    total: clientBreathTotal,
+    window60s: clientBreathWindow,
+    smoothPct: micSmoothPct,
+  } = useClientBreathCount();
 
   // 1 Hz tick so the "Warming up · N s" countdown ticks down even when no
   // packet has arrived. Cheap — one setState per second.
@@ -219,6 +223,7 @@ export default function LivePage() {
               metric === "breathRate" ? (
                 <MicLevel
                   pkpk={packet?.hub.micPkpkNow}
+                  smoothPct={micSmoothPct}
                   eventsPerMin={clientBreathTotal}
                   note={t("sensor.breathNote", { window: clientBreathWindow })}
                 />
