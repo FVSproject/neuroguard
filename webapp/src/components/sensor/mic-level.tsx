@@ -24,15 +24,10 @@ const BREATH_ON_PCT = 27;
 
 export function MicLevel({
   pkpk,
-  smoothPct,
   eventsPerMin,
   note,
 }: {
   pkpk: number | undefined;
-  /** Optional EMA-smoothed 0..100 %. When provided, drives the bar and
-   *  the teal/grey color so the visible level matches the detector in
-   *  `useClientBreathCount`. Falls back to raw pk-pk when omitted. */
-  smoothPct?: number;
   /** Optional: cumulative crossing count. Rendered as a small "N ev" chip
    *  next to the level bar so every threshold-crossing visibly bumps a
    *  number by 1. Passed by the Live page from `useClientBreathCount`. */
@@ -43,10 +38,7 @@ export function MicLevel({
   note?: string;
 }) {
   const raw = Math.max(0, Math.round(pkpk ?? 0));
-  const rawPct = Math.min(100, Math.round((raw / 2048) * 100));
-  const pct = smoothPct !== undefined
-    ? Math.min(100, Math.max(0, Math.round(smoothPct)))
-    : rawPct;
+  const pct = Math.min(100, Math.round((raw / 2048) * 100));
   const overThreshold = pct >= BREATH_ON_PCT;
 
   return (
