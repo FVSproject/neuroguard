@@ -11,14 +11,14 @@ import { cn } from "@/lib/utils";
  * FSR_FULL_SCALE = 3800 counts).
  *
  * Bar turns brand-teal once we cross the firmware's suck-event trigger
- * (SUCK_ON_PCT = 8 %). A fixed tick marks that trigger so the parent can
+ * (SUCK_ON_PCT = 25 %). A fixed tick marks that trigger so the parent can
  * verify visually that a squeeze crosses the line.
  *
  * Keep SUCK_ON_PCT in sync with the same constant in RFP602_Test.ino /
  * NeuroGuard_Hub_BLE.ino, otherwise the meter's tick and the firmware's
  * event fire at different amplitudes.
  */
-const SUCK_ON_PCT = 8;
+const SUCK_ON_PCT = 25;
 
 export function FsrLevel({ pct }: { pct: number | undefined }) {
   const raw = Math.max(0, Math.min(100, Math.round(pct ?? 0)));

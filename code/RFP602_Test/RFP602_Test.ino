@@ -123,11 +123,9 @@ const int MIC_PIN = D2;
 const float   R_DIV_OHM        = 47000.0f;
 const int     FSR_DEADBAND     = 20;
 const int     FSR_FULL_SCALE   = 3800;    // raw drop that maps to 100 %
-// 8 % rising threshold catches gentle sucks; parents want "every press
-// counts". Kept in lockstep with SUCK_ON_PCT in webapp/src/components/
-// sensor/fsr-level.tsx so the meter's teal tick lines up with the trigger.
-const float   SUCK_ON_PCT      = 8.0f;    // rising threshold to register suck
-const float   SUCK_OFF_PCT     = 3.0f;    // hysteresis (~40 % of ON)
+// Same thresholds as NeuroGuard_Hub_BLE.ino — see the comment there.
+const float   SUCK_ON_PCT      = 25.0f;   // rising threshold to register suck
+const float   SUCK_OFF_PCT     = 15.0f;   // release; 10-point gap stops double counts
 const uint32_t BURST_GAP_MS    = 1500;    // inter-suck gap > this ⇒ new burst
 
 // --------------------------- Mic / Respiration ------------------------------
