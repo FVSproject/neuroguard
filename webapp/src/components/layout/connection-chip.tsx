@@ -72,6 +72,7 @@ export function ConnectionChip() {
           className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted"
           role="status"
           aria-live="polite"
+          title={tBrace("drops", { count: packet.braceletDrops })}
         >
           <span className={cn("size-1.5 rounded-full", braceletDot)} aria-hidden />
           <Watch className="size-3.5" aria-hidden />

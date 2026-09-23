@@ -7,20 +7,29 @@ import type { CombinedPacket } from "@/lib/packet";
 import type { MetricId } from "@/lib/types";
 
 /**
+ * Bracelet data older than this is shown as "stale · N s ago" and never
+ * treated as a live reading. The hub keeps sending the last values for up
+ * to 15 s so a short reconnect doesn't blank every card.
+ */
+export const BRACELET_STALE_SEC = 5;
+
+/**
  * Extract a numeric value for the given metric from the latest packet.
  * Central place to map "our metric IDs" → "wire field names" so the rest
- * of the app doesn't have to know the packet shape.
+ * of the app doesn't have to know the packet shape. Returns null for
+ * stale bracelet data so alarms and sparklines only ever see live values.
  */
 export function readMetric(p: CombinedPacket, metric: MetricId): number | null {
+  const br = p.braceletAgeSec > BRACELET_STALE_SEC ? null : p.bracelet;
   switch (metric) {
-    case "hr":            return p.bracelet?.hrBpm ?? null;
-    case "spo2":          return p.bracelet?.spo2Valid ? p.bracelet.spo2Pct : null;
-    case "rmssd":         return p.bracelet?.rmssdMs ?? null;
-    case "sdnn":          return p.bracelet?.sdnnMs ?? null;
+    case "hr":            return br?.hrBpm ?? null;
+    case "spo2":          return br?.spo2Valid ? br.spo2Pct : null;
+    case "rmssd":         return br?.rmssdMs ?? null;
+    case "sdnn":          return br?.sdnnMs ?? null;
     case "suckRate":      return p.hub.sucksPerMin;
     case "breathRate":    return p.hub.estBreathsPerMin;
     case "apneaSec":      return p.hub.secondsSinceLastBreath;
-    case "stillnessSec":  return p.bracelet?.secondsSinceMovement ?? null;
+    case "stillnessSec":  return br?.secondsSinceMovement ?? null;
     case "tempC":         return p.hub.ahtOk ? p.hub.tempC : null;
     case "rhPct":         return p.hub.ahtOk ? p.hub.rhPct : null;
     case "eco2":          return p.hub.ensOk ? p.hub.eco2Ppm : null;

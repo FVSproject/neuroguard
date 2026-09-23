@@ -504,12 +504,28 @@ void setup() {
   // ---- BLE peripheral (Bluefruit / SoftDevice) ----
   Bluefruit.configPrphBandwidth(BANDWIDTH_HIGH);   // negotiate ATT MTU up to 247
   Bluefruit.begin();
-  Bluefruit.setTxPower(4);            // 4 dBm — good range, still low-power
+  // +8 dBm is the nRF52840 maximum: extra link margin for a foot that is
+  // moving, under a blanket, or turned away from the hub.
+  Bluefruit.setTxPower(8);
   Bluefruit.setName("NG-Bracelet");
+  // Preferred link params, matching what the hub requests after connecting:
+  // one packet per second needs nothing faster than 50–100 ms, and a 6 s
+  // supervision timeout rides out RF fades (the library default is 2 s).
+  Bluefruit.Periph.setConnIntervalMS(50, 100);
+  Bluefruit.Periph.setConnSupervisionTimeoutMS(6000);
   Bluefruit.Periph.setConnectCallback([](uint16_t h){
-    Serial.print("[BLE] central connected, handle="); Serial.println(h);
+    Serial.print("[BLE] central connected, handle="); Serial.print(h);
+    BLEConnection* c = Bluefruit.Connection(h);
+    if (c) {
+      Serial.print(" interval="); Serial.print(c->getConnectionInterval() * 1.25f);
+      Serial.print(" ms, timeout="); Serial.print(c->getSupervisionTimeout() * 10);
+      Serial.print(" ms");
+    }
+    Serial.println();
   });
   Bluefruit.Periph.setDisconnectCallback([](uint16_t h, uint8_t r){
+    // 0x08 = supervision timeout (signal lost), 0x13 = hub closed the link,
+    // 0x3E = connection failed to establish.
     Serial.print("[BLE] central disconnected, reason=0x"); Serial.println(r, HEX);
   });
 
