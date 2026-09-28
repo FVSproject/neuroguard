@@ -19,8 +19,8 @@ import { useBabyStore } from "@/stores/baby-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useBle } from "@/hooks/use-ble";
 import { useThresholds } from "@/hooks/use-thresholds";
-import { useMetricHistory, readMetric, BRACELET_STALE_SEC } from "@/hooks/use-history";
-import { useClientBreathCount } from "@/hooks/use-client-breath-count";
+import { useMetricHistory, readLiveMetric, BRACELET_STALE_SEC } from "@/hooks/use-history";
+import { useBreathStore } from "@/stores/breath-store";
 import { evaluate, type MetricState } from "@/lib/thresholds";
 import { isMetricReady, secondsUntilReady } from "@/lib/readiness";
 import type { MetricId } from "@/lib/types";
@@ -53,16 +53,11 @@ export default function LivePage() {
 
   const thresholds = useThresholds(currentId);
   const history = useMetricHistory(METRICS);
-  // Client-side breath counter (rising-edge crossing of 27 %). Overrides
-  // the firmware's respEventsPerMin / estBreathsPerMin so the UI stays
-  // consistent with the level bar even when the hub firmware isn't the
-  // latest, or its ambient-noise handling stalls. `total` is cumulative
-  // (monotonic, never decrements); `window60s` is the rolling 60 s count
-  // shown as a secondary hint in the card note.
-  const {
-    total: clientBreathTotal,
-    window60s: clientBreathWindow,
-  } = useClientBreathCount();
+  // Breath state from the app-wide tracker (mounted in AlarmMount). The
+  // Breathing card SHOWS the cumulative total, but its state chip, sparkline
+  // and alarms use the 60 s rate so they match the per-minute threshold band.
+  const breathTotal  = useBreathStore((s) => s.total);
+  const breathPerMin = useBreathStore((s) => s.window60s);
 
   // 1 Hz tick so the "Warming up · N s" countdown ticks down even when no
   // packet has arrived. Cheap — one setState per second.
@@ -76,18 +71,16 @@ export default function LivePage() {
     if (!hydrated) void hydrate();
   }, [hydrated, hydrate]);
 
-  // Fresh values per metric for the current render
+  // Values used for state evaluation. Recomputed on the 1 Hz tick too so the
+  // apnea timer keeps counting between packets.
   const values = useMemo(() => {
     if (!packet) return {} as Record<MetricId, number | null>;
-    const base = Object.fromEntries(METRICS.map((m) => [m, readMetric(packet, m)])) as Record<
+    const v = Object.fromEntries(METRICS.map((m) => [m, readLiveMetric(packet, m, nowMs)])) as Record<
       MetricId, number | null
     >;
-    // Override the firmware's breath rate with the client-side cumulative
-    // counter so the main number on the Breathing card matches the "N ev"
-    // chip and the level-bar tick the user actually sees.
-    base.breathRate = clientBreathTotal;
-    return base;
-  }, [packet, clientBreathTotal]);
+    v.breathRate = breathPerMin;
+    return v;
+  }, [packet, nowMs, breathPerMin]);
 
   /**
    * Compute the display state for a metric. Priority order:
@@ -193,6 +186,7 @@ export default function LivePage() {
             title: React.ReactNode;
             icon: React.ReactNode;
             unit: string;
+            bandUnit?: string;
             digits?: number;
           }> = [
             { metric: "hr",           title: t("sensor.hr"),        icon: <Heart       className="size-3.5 text-danger"   aria-hidden />, unit: t("sensor.hrUnit") },
@@ -200,13 +194,13 @@ export default function LivePage() {
             { metric: "rmssd",        title: t("sensor.hrv"),       icon: <Activity    className="size-3.5 text-brand"    aria-hidden />, unit: t("sensor.hrvUnit"),      digits: 1 },
             { metric: "stillnessSec", title: t("sensor.stillness"), icon: <Activity    className="size-3.5 text-accent"   aria-hidden />, unit: t("sensor.stillnessUnit") },
             { metric: "suckRate",     title: t("sensor.suck"),      icon: <PacifierIcon className="size-3.5 text-brand"    aria-hidden />, unit: t("sensor.suckUnit") },
-            { metric: "breathRate",   title: t("sensor.breath"),    icon: <Wind        className="size-3.5 text-brand"    aria-hidden />, unit: t("sensor.breathUnit") },
+            { metric: "breathRate",   title: t("sensor.breath"),    icon: <Wind        className="size-3.5 text-brand"    aria-hidden />, unit: t("sensor.breathUnit"), bandUnit: t("sensor.breathRateUnit") },
             { metric: "apneaSec",     title: t("sensor.apnea"),     icon: <Wind        className="size-3.5 text-danger"   aria-hidden />, unit: t("sensor.stillnessUnit") },
             { metric: "tempC",        title: t("sensor.temp"),      icon: <Thermometer className="size-3.5 text-accent"   aria-hidden />, unit: t("sensor.tempUnit"),     digits: 1 },
             { metric: "rhPct",        title: t("sensor.humidity"),  icon: <Droplet     className="size-3.5 text-brand"    aria-hidden />, unit: t("sensor.humidityUnit") },
             { metric: "eco2",         title: t("sensor.eco2"),      icon: <Air         className="size-3.5 text-brand"    aria-hidden />, unit: t("sensor.eco2Unit") },
           ];
-          return cards.map(({ metric, title, icon, unit, digits }) => {
+          return cards.map(({ metric, title, icon, unit, bandUnit, digits }) => {
             const { state, extra } = stateFor(metric);
             const hrExtra =
               metric === "hr" && !extra
@@ -221,19 +215,21 @@ export default function LivePage() {
               metric === "breathRate" ? (
                 <MicLevel
                   pkpk={packet?.hub.micPkpkNow}
-                  eventsPerMin={clientBreathTotal}
-                  note={t("sensor.breathNote", { window: clientBreathWindow })}
+                  eventsPerMin={breathTotal}
+                  note={t("sensor.breathNote", { window: breathPerMin })}
                 />
               ) :
               metric === "suckRate"   ? <FsrLevel pct={packet?.hub.fsrPctNow} /> :
               undefined;
+            const shown = metric === "breathRate" && packet ? breathTotal : values[metric];
             return (
               <SensorCard
                 key={metric}
                 title={title}
                 icon={icon}
-                value={fmt(values[metric], digits ?? 0)}
+                value={fmt(shown, digits ?? 0)}
                 unit={unit}
+                bandUnit={bandUnit}
                 state={state}
                 cfg={thresholds[metric]}
                 history={history[metric]}

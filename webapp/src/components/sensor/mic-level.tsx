@@ -3,6 +3,7 @@
 import { Mic } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { BREATH_THRESHOLD_PCT as BREATH_ON_PCT } from "@/stores/breath-store";
 
 /**
  * Raw mic activity strip — shows the peak-to-peak amplitude of the last
@@ -11,16 +12,13 @@ import { cn } from "@/lib/utils";
  * seeing sound (blow on the pacifier → bar jumps).
  *
  *   0    silence
- *   27 % raw pk-pk crosses the client-side "breath event" trigger
+ *   BREATH_ON_PCT  the breath line — crossing it upward counts one breath
  *  100 % pk-pk = 2048 (half-rail swing — a loud shout / clap / crying)
  *
- * When we're over the breath threshold the bar turns brand-teal; below it
- * stays muted grey, so the user can watch the threshold get crossed in real
- * time. Keep BREATH_ON_PCT in lockstep with `BREATH_THRESHOLD_PCT` in
- * `use-client-breath-count.ts` — the browser is the source of truth for
- * this threshold; firmware doesn't participate in the count anymore.
+ * When we're over the breath line the bar turns brand-teal; below it stays
+ * muted grey, so the user can watch the line get crossed in real time. The
+ * line comes from the breath store, so the tick always matches the counter.
  */
-const BREATH_ON_PCT = 27;
 
 export function MicLevel({
   pkpk,
@@ -30,7 +28,7 @@ export function MicLevel({
   pkpk: number | undefined;
   /** Optional: cumulative crossing count. Rendered as a small "N ev" chip
    *  next to the level bar so every threshold-crossing visibly bumps a
-   *  number by 1. Passed by the Live page from `useClientBreathCount`. */
+   *  number by 1. Passed by the Live page from the breath store. */
   eventsPerMin?: number;
   /** Optional caption rendered below the level row. Used to explain the
    *  cumulative-total semantics of `eventsPerMin` and to surface the
