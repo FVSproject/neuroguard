@@ -20,6 +20,7 @@ export function SensorCard({
   icon,
   value,
   unit,
+  bandUnit,
   state,
   cfg,
   history,
@@ -31,6 +32,9 @@ export function SensorCard({
   icon?: ReactNode;
   value: string | number;
   unit: string;
+  /** Unit for the "Normal: …" band when it differs from the shown value's
+   *  unit (Breathing shows a running total but is judged per minute). */
+  bandUnit?: string;
   state: MetricState;
   cfg?: ThresholdConfig;
   history?: number[];
@@ -67,7 +71,10 @@ export function SensorCard({
             below its content and the chip gets squashed to a two-line wrap. */}
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
           <span className="shrink-0">{icon}</span>
-          <span className="truncate">{title}</span>
+          {/* Wrap to two lines instead of truncating: longer titles
+              ("Apnea watchdog", most Arabic labels) lost their ending
+              next to a wide state chip like "Warming up". */}
+          <span className="line-clamp-2 break-words leading-tight">{title}</span>
         </div>
         <StateChip state={state} />
       </div>
@@ -108,7 +115,7 @@ export function SensorCard({
         <div className="h-[22px]" aria-hidden />
       )}
 
-      <ThresholdBadge cfg={cfg} unit={unit} state={state} className="text-[10px] leading-tight" />
+      <ThresholdBadge cfg={cfg} unit={bandUnit ?? unit} state={state} className="text-[10px] leading-tight" />
     </motion.div>
   );
 }

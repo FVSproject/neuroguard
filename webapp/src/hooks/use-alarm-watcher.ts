@@ -16,7 +16,7 @@ import { useBabyStore } from "@/stores/baby-store";
 import { useBleStore } from "@/stores/ble-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useThresholds } from "./use-thresholds";
-import { readMetric } from "./use-history";
+import { readLiveMetric } from "./use-history";
 import type { AlarmPrefs, LogEntry } from "@/lib/types";
 import type { MetricId } from "@/lib/types";
 import type { CombinedPacket } from "@/lib/packet";
@@ -34,7 +34,7 @@ const METRIC_LABEL_KEY: Record<MetricId, string> = {
   sdnn:         "sensor.hrv",
   suckRate:     "sensor.suck",
   breathRate:   "sensor.breath",
-  apneaSec:     "sensor.breath",
+  apneaSec:     "sensor.apnea",
   stillnessSec: "sensor.motion",
   tempC:        "sensor.temp",
   rhPct:        "sensor.humidity",
@@ -97,7 +97,7 @@ export function useAlarmWatcher() {
         if (!isMetricReady(metric, sessionStart, nowMs)) continue;
 
         const cfg = thresholds[metric];
-        const v = readMetric(p, metric);
+        const v = readLiveMetric(p, metric, nowMs);
         const state = evaluate(v, cfg);
         const changed = observe(metric, state, v);
         if (changed === "changed" && (state === "alert" || state === "critical" || state === "watch")) {

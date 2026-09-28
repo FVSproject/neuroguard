@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useBleStore } from "@/stores/ble-store";
+import { apneaSecAt, useBreathStore } from "@/stores/breath-store";
 import type { CombinedPacket } from "@/lib/packet";
 import type { MetricId } from "@/lib/types";
 
@@ -38,6 +39,17 @@ export function readMetric(p: CombinedPacket, metric: MetricId): number | null {
   }
 }
 
+/**
+ * readMetric for live consumers (cards, sparklines, alarms). Breathing rate
+ * and the apnea timer come from the browser's breath tracker — the same mic
+ * line the user sees on the bar — not from the hub's own detector.
+ */
+export function readLiveMetric(p: CombinedPacket, metric: MetricId, nowMs: number): number | null {
+  if (metric === "breathRate") return useBreathStore.getState().window60s;
+  if (metric === "apneaSec")   return apneaSecAt(nowMs);
+  return readMetric(p, metric);
+}
+
 const HISTORY_LEN = 30;   // ~30 s of samples at 1 Hz — matches sparkline width
 
 /**
@@ -57,8 +69,9 @@ export function useMetricHistory(metrics: readonly MetricId[]): Record<MetricId,
     const unsub = useBleStore.subscribe((s) => s.lastPacket, (packet) => {
       if (!packet) return;
       let touched = false;
+      const now = Date.now();
       for (const m of metrics) {
-        const v = readMetric(packet, m);
+        const v = readLiveMetric(packet, m, now);
         if (v === null || v === undefined || Number.isNaN(v)) continue;
         const arr = bufRef.current[m] ?? (bufRef.current[m] = []);
         arr.push(v);

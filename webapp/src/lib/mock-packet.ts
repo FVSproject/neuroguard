@@ -32,7 +32,10 @@ export function generateMockPacket(step: number): CombinedPacket {
       meanPeakPct: 45 + 5 * s(0.15),
       meanBurstSec: 4 + 0.4 * s(0.20),
       regularityCv: 0.2 + 0.05 * s(0.30),
-      micPkpkNow: 500 + Math.round(300 * s(0.5)),
+      // Above the 40 % breath line every other second (~49 % vs ~17 %) so the
+      // browser-side breath counter sees ~30 breaths/min and the apnea timer
+      // keeps resetting in mock mode.
+      micPkpkNow: Math.round((step % 2 === 0 ? 1000 : 350) + 60 * r()),
       respEventsPerMin: Math.round(breath * 2),
       estBreathsPerMin: Math.round(breath),
       secondsSinceLastBreath: Math.round(Math.max(0, 2 + 2 * s(0.4))),
